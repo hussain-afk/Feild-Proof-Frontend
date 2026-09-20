@@ -12,13 +12,13 @@ const Routing = () => {
     const {user} = useContext(context)
     const ProtectedRoute = ({ children }) => {
         if (!user) {
-            return <Navigate to="/auth" replace />;
+            return <Navigate to="/" replace />;
         }
         return children;
     };
     return (
         <Routes>
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<AuthPage />} />
             <Route path="/worker" element={<ProtectedRoute><WorkerRootLayout /></ProtectedRoute>} >
                 <Route index element={<WorkerDashboard />} />
             </Route>

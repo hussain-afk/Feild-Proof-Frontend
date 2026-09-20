@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://feild-proof-backend.vercel.app/api/auth",
+    baseURL: "https://feild-proof-backend.vercel.app/api/auth/",
     headers: {
         "Content-Type": "application/json",
     },
