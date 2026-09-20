@@ -1,79 +1,81 @@
-import { createContext, useState, useEffect } from "react";
-import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
-import { getAllTasks } from "../api/task.api.js";
+import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export const context = createContext()
+import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
+import { getAllTasks } from "../api/task.api.js";
+
+export const context = createContext();
 
 const ContextProvider = ({ children }) => {
-    const navigate = useNavigate()
-    const [user, setUser] = useState(null)
-    // console.log('User state updated:', user) // Log the user state whenever it changes
-    const [isLoading, setIsLoading] = useState(false)
-    const [allUsers, setAllUsers] = useState([]) // State to hold all users
-    // console.log('Loading state updated:', isLoading) // Log the loading state whenever it changes
-    const [allTasks, setAllTasks] = useState([]) // State to hold all tasks
+  const navigate = useNavigate();
 
+  const [user, setUser] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
 
-    // fetchCurrentUser() // Call the function to fetch the current user when the component mounts
-    useEffect(() => {
-        const fetchCurrentUser = async () => {
-            try {
-                setIsLoading(true)
-                const response = await getCurrentUser()
-                // console.log('User fetched successfully:', response)
-                setUser(response)
-                if (response.role === 'worker') {
-                    navigate('/worker') // Uncomment this line if you want to navigate after fetching the user
-                }
-                if (response.role === 'manager') {
-                    navigate('/manager') // Uncomment this line if you want to navigate after fetching the user
-                }
-            } catch (error) {
-                // console.error('Error fetching user:', error)
-            } finally {
-                setIsLoading(false)
-            }
+  // Important:
+  // Website start hone par loading true hogi
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Saari API calls ek saath
+        const [currentUser, users, tasks] = await Promise.all([
+          getCurrentUser(),
+          getAllUsers(),
+          getAllTasks(),
+        ]);
+
+        // User set karo
+        setUser(currentUser);
+
+        // Users set karo
+        setAllUsers(users);
+
+        // Tasks set karo
+        setAllTasks(tasks);
+
+        // Role ke according redirect
+        if (currentUser.role === "worker") {
+          navigate("/worker");
         }
-        fetchCurrentUser()
-    }, [])
 
-    useEffect(() => {
-        const fetchAllUsers = async () => {
-            try {
-                setIsLoading(true)
-                const response = await getAllUsers()
-                // console.log('All users fetched successfully:', response)
-                setAllUsers(response)
-            } catch (error) {
-                // console.error('Error fetching all users:', error)
-            } finally {
-                setIsLoading(false)
-            }
+        if (currentUser.role === "manager") {
+          navigate("/manager");
         }
-        fetchAllUsers()
-    }, [])
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        // Jab saara data load ho jaye
+        setIsLoading(false);
+      }
+    };
 
-    useEffect(() => {
-        const fetchAllTasks = async () => {
-            try {
-                setIsLoading(true)
-                const response = await getAllTasks()
-                // console.log('All tasks fetched successfully:', response)
-                setAllTasks(response)
-            } catch (error) {
-                // console.error('Error fetching all tasks:', error)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-        fetchAllTasks()
-    }, []) // Add allTasks as a dependency to refetch when it changes
+    loadAllData();
+  }, [navigate]);
 
-    return (
-        <context.Provider value={{ user, setUser, isLoading, setIsLoading, allUsers, setAllUsers, allTasks, setAllTasks }}>
-            {children}
-        </context.Provider>
-    )
-}
-export default ContextProvider
+  return (
+    <context.Provider
+      value={{
+        user,
+        setUser,
+
+        allUsers,
+        setAllUsers,
+
+        allTasks,
+        setAllTasks,
+
+        isLoading,
+        setIsLoading,
+      }}
+    >
+      {children}
+    </context.Provider>
+  );
+};
+
+export default ContextProvider;
