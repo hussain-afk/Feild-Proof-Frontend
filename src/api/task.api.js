@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://feild-proof-backend.vercel.app/api/tasks/",
+    baseURL: "https://feild-proof-backend.onrender.com/api/tasks/",
     headers: {
         "Content-Type": "application/json",
     },
