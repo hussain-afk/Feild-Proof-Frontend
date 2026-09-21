@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL: "https://feild-proof-backend.vercel.app/api/auth/",
+    // https://feild-proof-backend.vercel.app
     headers: {
         "Content-Type": "application/json",
     },
@@ -55,6 +56,6 @@ export const logoutUser = async () => {
     try {
         const response = await api.get("/logout");
     } catch (error) {
-        throw error.response.data;
+        throw error.response.message;
     }
 }

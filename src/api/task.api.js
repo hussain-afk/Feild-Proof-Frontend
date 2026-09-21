@@ -17,6 +17,16 @@ export const createTask = async (taskData) => {
     }
 }
 
+export const getMyTasks = async () => {
+    try {
+        const response = await api.get("/my-tasks");
+        // console.log("my tasks api", response.data);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const getAllTasks = async () => {
     try {
         const response = await api.get("/all");
