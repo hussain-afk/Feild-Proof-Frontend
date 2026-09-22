@@ -1,8 +1,13 @@
 import React from 'react'
 import Routing from './router/Routing'
 import { Toaster } from 'react-hot-toast'
+import { useContext } from 'react'
+import { context } from './context/context.jsx'
+import LoadingState from './ui/LoadingState.jsx'
 
 function App() {
+  const { isLoading } = useContext(context)
+
   return (
     <div>
       <Toaster
@@ -40,7 +45,7 @@ function App() {
           },
         }}
       />
-      <Routing />
+      {isLoading ? <LoadingState /> : <Routing />}
     </div>
   )
 }
