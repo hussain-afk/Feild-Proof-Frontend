@@ -1,5 +1,6 @@
 import React, { useContext, useState } from "react";
 import { context } from "../../../context/context";
+import useVerification from "../../../hooks/useVerification";
 import WorkerTaskCard from "./TaskCard";
 import {
   Bell,
@@ -14,15 +15,31 @@ import {
 import Modal from "../../Modal";
 
 function WorkerDashboard() {
+  const { verifyCheckIn, verifyCheckOut } = useVerification();
   const { myTasks, notifications } = useContext(context);
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
 
-  const handleCheckIn = (task) => {
+  const handleCheckIn = (id,imageFile) => {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        console.log("Worker Lat/Lng:", latitude, longitude);
-        // verifyCheckInAPI({ taskId: task._id, latitude, longitude });
+        console.log("Worker Lat/Lng:", latitude, longitude, "Image File:", imageFile, "Task ID:", id);
+        const checkIn = await verifyCheckIn(id, latitude, longitude, imageFile);
+        console.log("Check-in Result:", checkIn);
+      },
+      () => {
+        alert("Please enable GPS/Location permission to check in.");
+      }
+    );
+  };
+
+  const handleCheckOut = (id,imageFile) => {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        // console.log("Worker Lat/Lng:", latitude, longitude, "Image File:", imageFile, "Task ID:", id);
+        const checkOut = await verifyCheckOut(id, latitude, longitude, imageFile);
+        console.log("Check-out Result:", checkOut);
       },
       () => {
         alert("Please enable GPS/Location permission to check in.");
@@ -93,6 +110,7 @@ function WorkerDashboard() {
                   key={task._id}
                   task={task}
                   onCheckIn={handleCheckIn}
+                  onCheckOut={handleCheckOut}
                 />
               ))}
             </div>
