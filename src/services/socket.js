@@ -1,8 +1,6 @@
 import { io } from "socket.io-client";
 
-// Backend URL 4000
-const SOCKET_URL = "https://feild-proof-backend.onrender.com";
-// https://feild-proof-backend.onrender.com
+const SOCKET_URL =  "https://feild-proof-backend.onrender.com";
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,

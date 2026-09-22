@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://feild-proof-backend.onrender.com/api/tasks/",
+    baseURL: `https://feild-proof-backend.onrender.com/api/tasks/`,
     headers: {
         "Content-Type": "application/json",
     },
@@ -39,7 +39,7 @@ export const getAllTasks = async () => {
 export const deleteTask = async (taskId) => {
     try {
         const response = await api.delete(`/del-task/${taskId}`);
-        // return response.data;
+        return response.data;
     } catch (error) {
         throw error;
     }
