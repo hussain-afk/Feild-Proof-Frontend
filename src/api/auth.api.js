@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL: `https://feild-proof-backend.onrender.com/api/auth/`,
+    // https://feild-proof-backend.onrender.com
     headers: {
         "Content-Type": "application/json",
     },

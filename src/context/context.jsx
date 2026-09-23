@@ -1,9 +1,10 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
+import { getVerificationStatusAPI } from "../api/verification.api.js";
 import { socket } from "../services/socket.js";
 import { toast } from "react-hot-toast";
 
@@ -12,75 +13,46 @@ export const context = createContext();
 const ContextProvider = ({ children }) => {
   const navigate = useNavigate();
 
+  // App Main States
   const [user, setUser] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [verificationStatus, setVerificationStatus] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getTaskId = (task) => task?._id || task?.id;
-
-  const upsertTask = useCallback((task) => {
-    if (!task) return;
-    const taskId = getTaskId(task);
-    if (!taskId) return;
-
-    const updateTasks = (previousTasks) => {
-      const taskIndex = previousTasks.findIndex((item) => getTaskId(item) === taskId);
-      if (taskIndex === -1) return [task, ...previousTasks];
-
-      return previousTasks.map((item, index) =>
-        index === taskIndex ? { ...item, ...task } : item
-      );
-    };
-
-    setAllTasks(updateTasks);
-    setMyTasks(updateTasks);
-  }, []);
-
-  const removeTask = useCallback((taskId) => {
-    if (!taskId) return;
-    setAllTasks((previousTasks) => previousTasks.filter((task) => getTaskId(task) !== taskId));
-    setMyTasks((previousTasks) => previousTasks.filter((task) => getTaskId(task) !== taskId));
-  }, []);
-
-  const updateTask = useCallback((taskId, changes) => {
-    if (!taskId) return;
-    const updateTasks = (previousTasks) => previousTasks.map((task) =>
-      getTaskId(task) === taskId ? { ...task, ...changes } : task
-    );
-
-    setAllTasks(updateTasks);
-    setMyTasks(updateTasks);
-  }, []);
-
-  // 1. App Ka Initial Data Load Logic
+  // 1. Initial App Data Loading (Jab Page Load Ho)
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
 
-        // Pehle authenticated current user check karein
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
         if (currentUser) {
-          // Manager Access: Saare users aur tasks load karein
+          // MANAGER DATA LOAD
           if (currentUser.role === "manager") {
             const usersData = await getAllUsers();
             const tasksData = await getAllTasks();
+            const verificationsData = await getVerificationStatusAPI();
+
             setAllUsers(usersData || []);
             setAllTasks(tasksData || []);
+            setVerificationStatus(verificationsData || []);
+
             if (window.location.pathname === "/") navigate("/manager");
           }
 
-          // Worker Access: Specific tasks aur notifications load karein
+          // WORKER DATA LOAD
           if (currentUser.role === "worker") {
             const workerTasks = await getMyTasks();
             const workerNotifications = await getNotifications();
+
             setMyTasks(workerTasks || []);
             setNotifications(workerNotifications || []);
+
             if (window.location.pathname === "/") navigate("/worker");
           }
         }
@@ -94,27 +66,31 @@ const ContextProvider = ({ children }) => {
     loadData();
   }, [navigate]);
 
-  // Keep both open dashboards fresh even when the backend does not emit a socket event.
+  // 2. Real-Time Backup Sync (3 Seconds Auto-Refresh)
   useEffect(() => {
-    if (!user) return undefined;
+    if (!user) return;
 
     const syncTasks = async () => {
       try {
         if (user.role === "manager") {
-          setAllTasks((await getAllTasks()) || []);
+          const freshTasks = await getAllTasks();
+          const freshVerifications = await getVerificationStatusAPI();
+          setAllTasks(freshTasks || []);
+          setVerificationStatus(freshVerifications || []);
         } else if (user.role === "worker") {
-          setMyTasks((await getMyTasks()) || []);
+          const freshMyTasks = await getMyTasks();
+          setMyTasks(freshMyTasks || []);
         }
       } catch (error) {
-        console.error("Realtime task sync error:", error);
+        console.error("Auto Sync Error:", error);
       }
     };
 
-    const intervalId = window.setInterval(syncTasks, 3000);
-    return () => window.clearInterval(intervalId);
+    const intervalId = setInterval(syncTasks, 3000);
+    return () => clearInterval(intervalId);
   }, [user]);
 
-  // 2. Real-Time Socket Notifications & State Synchronization
+  // 3. Socket.io Real-Time Connection & Live Listener
   useEffect(() => {
     if (user?._id || user?.id) {
       const userId = user._id || user.id;
@@ -122,50 +98,87 @@ const ContextProvider = ({ children }) => {
       socket.connect();
       socket.emit("join_room", userId);
 
+      // A. Naya Task Assign Hone Par Event
       const handleNewTaskAssigned = (data = {}) => {
-        const task = data.task || data.data;
-        if (task) upsertTask(task);
-        if (data.notification) {
-          setNotifications((previousNotifications) => {
-            const notificationId = data.notification._id || data.notification.id;
-            if (previousNotifications.some((item) => (item._id || item.id) === notificationId)) {
-              return previousNotifications;
+        const newTask = data.task || data.data;
+
+        if (newTask) {
+          const updateTaskArray = (prevTasks) => {
+            const exists = prevTasks.some(
+              (t) => (t._id || t.id) === (newTask._id || newTask.id)
+            );
+            if (exists) {
+              return prevTasks.map((t) =>
+                (t._id || t.id) === (newTask._id || newTask.id) ? newTask : t
+              );
             }
-            return [data.notification, ...previousNotifications];
-          });
+            return [newTask, ...prevTasks];
+          };
+
+          setAllTasks(updateTaskArray);
+          setMyTasks(updateTaskArray);
         }
-        toast.success(data.message || "New task assigned");
+
+        if (data.notification) {
+          setNotifications((prevNotifs) => [data.notification, ...prevNotifs]);
+        }
+
+        toast.success(data.message || "New task assigned!");
       };
 
+      // B. Jab koi Task Check-In / Check-Out ya Update ho
       const handleTaskUpdated = (data = {}) => {
-        const task = data.task || data.data || data;
-        if (task && getTaskId(task)) upsertTask(task);
+        const updatedTask = data.task || data.data || data;
+        const targetId = updatedTask?._id || updatedTask?.id;
+
+        if (targetId) {
+          const updateTaskArray = (prevTasks) =>
+            prevTasks.map((t) =>
+              (t._id || t.id) === targetId ? { ...t, ...updatedTask } : t
+            );
+
+          setAllTasks(updateTaskArray);
+          setMyTasks(updateTaskArray);
+        }
       };
 
+      // C. Jab Task Delete ho
       const handleTaskDeleted = (data = {}) => {
-        removeTask(data.taskId || data.id || getTaskId(data.task));
+        const targetId = data.taskId || data.id || data.task?._id || data.task?.id;
+
+        if (targetId) {
+          const filterTaskArray = (prevTasks) =>
+            prevTasks.filter((t) => (t._id || t.id) !== targetId);
+
+          setAllTasks(filterTaskArray);
+          setMyTasks(filterTaskArray);
+        }
       };
 
+      // Event Handlers Register Karein
       socket.on("new_task_assigned", handleNewTaskAssigned);
-      ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((eventName) => {
-        socket.on(eventName, handleTaskUpdated);
-      });
-      ["task_deleted", "task_removed"].forEach((eventName) => {
-        socket.on(eventName, handleTaskDeleted);
+
+      ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((event) => {
+        socket.on(event, handleTaskUpdated);
       });
 
+      ["task_deleted", "task_removed"].forEach((event) => {
+        socket.on(event, handleTaskDeleted);
+      });
+
+      // Cleanup on Unmount
       return () => {
         socket.off("new_task_assigned", handleNewTaskAssigned);
-        ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((eventName) => {
-          socket.off(eventName, handleTaskUpdated);
+        ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((event) => {
+          socket.off(event, handleTaskUpdated);
         });
-        ["task_deleted", "task_removed"].forEach((eventName) => {
-          socket.off(eventName, handleTaskDeleted);
+        ["task_deleted", "task_removed"].forEach((event) => {
+          socket.off(event, handleTaskDeleted);
         });
         socket.disconnect();
       };
     }
-  }, [removeTask, upsertTask, user]);
+  }, [user]);
 
   return (
     <context.Provider
@@ -180,9 +193,8 @@ const ContextProvider = ({ children }) => {
         setMyTasks,
         notifications,
         setNotifications,
-        upsertTask,
-        removeTask,
-        updateTask,
+        verificationStatus,
+        setVerificationStatus,
         isLoading,
         setIsLoading,
       }}

@@ -25,3 +25,16 @@ export const verifyCheckOutAPI = async (formData) => {
         throw error;
     }
 }
+
+export const getVerificationStatusAPI = async () => {
+    try {
+        const response = await api.get("/verifications",{
+            headers: {
+                "Content-Type": "application/json",
+              },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}

@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   ShieldCheck, 
-  LayoutDashboard, 
   ListTodo, 
   Users, 
-  Building2, 
-  FileText, 
-  Settings, 
   LogOut, 
   ChevronLeft, 
   ChevronRight,
@@ -14,15 +10,15 @@ import {
   X 
 } from 'lucide-react';
 import useAuth from '../../../hooks/useAuth';
-import {useContext} from 'react';
-import {context} from '../../../context/context.jsx'
+import { context } from '../../../context/context.jsx';
+import { NavLink } from 'react-router-dom';
 
-function ManagerSidebar({ activeTab = 'tasks', setActiveTab }) {
+function ManagerSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const {user} = useContext(context)
-  const { logout } = useAuth()
+  const { user } = useContext(context);
+  const { logout } = useAuth();
 
   const onLogout = async () => {
     try {
@@ -30,21 +26,12 @@ function ManagerSidebar({ activeTab = 'tasks', setActiveTab }) {
     } catch (error) {
       console.error('Error during logout:', error);
     }
-  }
+  };
 
   const navItems = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Field Tasks', icon: ListTodo },
-    { id: 'workers', label: 'Field Workers', icon: Users },
-    { id: 'clients', label: 'Clients & Sites', icon: Building2 },
-    { id: 'invoices', label: 'Automated Invoices', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'tasks', label: 'Field Tasks', path: '/manager', icon: ListTodo, end: true },
+    { id: 'workers', label: 'Verification', path: '/manager/verification', icon: Users, end: false },
   ];
-
-  const handleNavClick = (id) => {
-    if (setActiveTab) setActiveTab(id);
-    setIsMobileOpen(false); // Mobile menu select karne par close ho jaye
-  };
 
   return (
     <>
@@ -78,17 +65,15 @@ function ManagerSidebar({ activeTab = 'tasks', setActiveTab }) {
       {/* 💻 Desktop & Mobile Drawer Sidebar */}
       <aside 
         className={`fixed lg:static top-0 left-0 z-50 h-full min-h-screen bg-[#111827] border-r border-slate-800/80 flex flex-col justify-between transition-all duration-300 ${
-          /* Mobile slide-in positioning */
           isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
         } ${
-          /* Desktop width handling */
           isCollapsed ? 'lg:w-20' : 'lg:w-64'
         }`}
       >
         {/* Collapse Toggle Button (Desktop Only) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute -right-3 top-7 bg-blue-600 hover:bg-blue-500 text-white p-1 rounded-full border border-slate-900 shadow-md transition-all"
+          className="hidden lg:flex absolute -right-3 top-7 bg-blue-600 hover:bg-blue-500 text-white p-1 rounded-full border border-slate-900 shadow-md transition-all z-50"
         >
           {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
         </button>
@@ -112,7 +97,6 @@ function ManagerSidebar({ activeTab = 'tasks', setActiveTab }) {
               )}
             </div>
 
-            {/* Close icon for mobile inside drawer */}
             <button 
               onClick={() => setIsMobileOpen(false)}
               className="lg:hidden text-slate-400 hover:text-white p-1"
@@ -125,27 +109,34 @@ function ManagerSidebar({ activeTab = 'tasks', setActiveTab }) {
           <nav className="p-3 space-y-1 mt-2">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
               return (
-                <button
+                <NavLink
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group relative ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                  }`}
+                  to={item.path}
+                  end={item.end}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group relative ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    }`
+                  }
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`} />
-                  
-                  {(!isCollapsed || isMobileOpen) && (
-                    <span className="truncate">{item.label}</span>
-                  )}
+                  {({ isActive }) => (
+                    <>
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`} />
+                      
+                      {(!isCollapsed || isMobileOpen) && (
+                        <span className="truncate">{item.label}</span>
+                      )}
 
-                  {isActive && (!isCollapsed || isMobileOpen) && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+                      {isActive && (!isCollapsed || isMobileOpen) && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+                      )}
+                    </>
                   )}
-                </button>
+                </NavLink>
               );
             })}
           </nav>
