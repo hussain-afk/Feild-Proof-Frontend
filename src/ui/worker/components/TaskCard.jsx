@@ -59,11 +59,11 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
 
-      console.log(`📸 Image Selected for ${isCheckedIn ? "Check-Out" : "Check-In"}:`, {
-        name: file.name,
-        size: (file.size / 1024).toFixed(2) + " KB",
-        rawFile: file,
-      });
+      // console.log(`📸 Image Selected for ${isCheckedIn ? "Check-Out" : "Check-In"}:`, {
+      //   name: file.name,
+      //   size: (file.size / 1024).toFixed(2) + " KB",
+      //   rawFile: file,
+      // });
     }
   };
 

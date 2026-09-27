@@ -1,10 +1,11 @@
-import {verifyCheckInAPI, verifyCheckOutAPI} from '../api/verification.api.js'
+import { verifyCheckInAPI, verifyCheckOutAPI, delVerification } from '../api/verification.api.js'
 import { useContext } from 'react'
 import { context } from '../context/context.jsx'
+import { toast } from 'react-hot-toast'
 
 
 const useVerification = () => {
-    const { upsertTask, updateTask } = useContext(context)
+    const { paymentModalOpen, setPaymentModalOpen } = useContext(context)
     const verifyCheckIn = async (taskId, latitude, longitude, imageFile) => {
         try {
             const formData = new FormData();
@@ -14,10 +15,15 @@ const useVerification = () => {
             formData.append("image", imageFile);
 
             const result = await verifyCheckInAPI(formData);
-            upsertTask(result?.task || result?.data || result);
-            updateTask(taskId, { status: "in-progress", isCheckedIn: true });
             return result;
         } catch (error) {
+            const err = error?.response?.data?.message || error?.message
+            if (err === "payment method not set") {
+                toast.error("Payment method not set. Please set your payment method to proceed.");
+                setPaymentModalOpen(true);
+                return;
+            }
+
             throw error;
         }
     }
@@ -29,14 +35,22 @@ const useVerification = () => {
             formData.append("longitude", longitude);
             formData.append("image", imageFile);
             const result = await verifyCheckOutAPI(formData);
-            upsertTask(result?.task || result?.data || result);
-            updateTask(taskId, { status: "completed", isCheckedIn: false });
             return result;
         } catch (error) {
+            toast.error(error?.response?.data?.message || error?.message);
             throw error;
         }
     }
-    return { verifyCheckIn, verifyCheckOut };
+    const deleteVerification = async (verificationId) => {
+        try {
+            const result = await delVerification(verificationId);
+            return result;
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error?.message);
+            throw error;
+        }
+    }
+    return { verifyCheckIn, verifyCheckOut, deleteVerification };
 
 }
 

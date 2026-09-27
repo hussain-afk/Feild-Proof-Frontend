@@ -52,6 +52,16 @@ export const getAllUsers = async () => {
     }
 }
 
+export const updatePaymentMethod = async (userId, paymentData) => {
+    console.log("Updating payment method for user:", userId, "with data:", paymentData);
+    try {
+        const response = await api.put(`/update-payment/${userId}`, paymentData);
+        return response.data;
+    } catch (error) {
+        throw error.response.data;
+    }
+}
+
 export const logoutUser = async () => {
     try {
         const response = await api.get("/logout");

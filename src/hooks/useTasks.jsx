@@ -3,12 +3,12 @@ import { useContext } from 'react'
 import { context } from '../context/context.jsx'
 
 const useTasks = () => {
-    const { upsertTask, removeTask } = useContext(context)
+    const { setIsCreateTaskModalOpen } = useContext(context)
 
     const handleCreateTask = async (taskData) => {
         try {
             const response = await createTask(taskData)
-            upsertTask(response?.task || response?.data || response)
+            setIsCreateTaskModalOpen(false)
             return response
         } catch (error) {
             throw error
@@ -18,7 +18,6 @@ const useTasks = () => {
     const handleDeleteTask = async (taskId) => {
         try {
             const response = await deleteTask(taskId)
-            removeTask(taskId)
             return response
         } catch (error) {
             throw error

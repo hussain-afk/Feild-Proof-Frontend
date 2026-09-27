@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { context } from "../../../context/context";
 import useVerification from "../../../hooks/useVerification";
 import WorkerTaskCard from "./TaskCard";
+import useAuth from "../../../hooks/useAuth";
 import {
   Bell,
   CheckCircle2,
@@ -15,17 +16,37 @@ import {
 import Modal from "../../Modal";
 
 function WorkerDashboard() {
+  const { updatePayment } = useAuth();
   const { verifyCheckIn, verifyCheckOut } = useVerification();
-  const { myTasks, notifications } = useContext(context);
+  const { myTasks, notifications, user, paymentModalOpen, setPaymentModalOpen } = useContext(context);
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
+  // payment modal state
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [jazzcashOrEasypaisaNumber, setJazzcashOrEasypaisaNumber] = useState("jazzcash");
 
-  const handleCheckIn = (id,imageFile) => {
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    // Handle payment submission logic here
+    console.log("Payment Details:", { bankName, accountNumber, accountHolderName, jazzcashOrEasypaisaNumber });
+    if (!bankName || !accountNumber || !accountHolderName || !jazzcashOrEasypaisaNumber) {
+      alert("Please fill in all payment details.");
+      return;
+    }
+    const response = await updatePayment(user._id, bankName, accountNumber, accountHolderName, jazzcashOrEasypaisaNumber);
+    console.log("Payment Update Response:", response);
+    setPaymentModalOpen(false);
+  }
+
+  const handleCheckIn = (id, imageFile) => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        console.log("Worker Lat/Lng:", latitude, longitude, "Image File:", imageFile, "Task ID:", id);
+        // console.log("Worker Lat/Lng:", latitude, longitude, "Image File:", imageFile, "Task ID:", id);
         const checkIn = await verifyCheckIn(id, latitude, longitude, imageFile);
-        console.log("Check-in Result:", checkIn);
+        // console.log("Check-in Result:", checkIn);
       },
       () => {
         alert("Please enable GPS/Location permission to check in.");
@@ -33,15 +54,16 @@ function WorkerDashboard() {
     );
   };
 
-  const handleCheckOut = (id,imageFile) => {
+  const handleCheckOut = (id, imageFile) => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         // console.log("Worker Lat/Lng:", latitude, longitude, "Image File:", imageFile, "Task ID:", id);
         const checkOut = await verifyCheckOut(id, latitude, longitude, imageFile);
-        console.log("Check-out Result:", checkOut);
+        // console.log("Check-out Result:", checkOut);
       },
       () => {
+        // console.log("Failed to get location for check-out.");
         alert("Please enable GPS/Location permission to check in.");
       }
     );
@@ -146,8 +168,8 @@ function WorkerDashboard() {
                 <div
                   key={notification._id || notification.id}
                   className={`p-3.5 rounded-xl border transition-all duration-200 relative ${!notification.isRead
-                      ? "bg-slate-900/80 border-blue-500/40 shadow-sm"
-                      : "bg-slate-900/30 border-slate-800/80"
+                    ? "bg-slate-900/80 border-blue-500/40 shadow-sm"
+                    : "bg-slate-900/30 border-slate-800/80"
                     }`}
                 >
                   {/* Header: Status Dot, Title & Time */}
@@ -203,6 +225,94 @@ function WorkerDashboard() {
             </div>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        title="Payment Method Required"
+      >
+        <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+          Please provide your payment information to proceed.
+        </p>
+
+        <form onSubmit={(e) => handlePaymentSubmit(e)} className="space-y-3.5">
+          {/* Bank Name */}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Bank Name
+            </label>
+            <input
+              type="text"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              placeholder="Enter bank name"
+              className="w-full rounded-lg border border-slate-800 bg-[#090d16] px-3 py-2 text-xs text-white placeholder-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Account Number */}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Account Number / IBAN
+            </label>
+            <input
+              type="text"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="Enter account number"
+              className="w-full rounded-lg border border-slate-800 bg-[#090d16] px-3 py-2 text-xs font-mono text-white placeholder-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Account Holder Name */}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Account Holder Name
+            </label>
+            <input
+              type="text"
+              value={accountHolderName}
+              onChange={(e) => setAccountHolderName(e.target.value)}
+              placeholder="Enter account holder name"
+              className="w-full rounded-lg border border-slate-800 bg-[#090d16] px-3 py-2 text-xs text-white placeholder-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Payment Method Select */}
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Wallet Option
+            </label>
+            <select
+              name="paymentMethod"
+              value={jazzcashOrEasypaisaNumber || "jazzcash"}
+              onChange={(e) => setJazzcashOrEasypaisaNumber(e.target.value)}
+              className="w-full rounded-lg border border-slate-800 bg-[#090d16] px-3 py-2 text-xs text-slate-200 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="jazzcash">JazzCash</option>
+              <option value="easypaisa">Easypaisa</option>
+            </select>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => setPaymentModalOpen(false)}
+              className="rounded-lg border border-slate-800 bg-slate-800/50 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-500 active:scale-[0.98] transition"
+            >
+              Save Details
+            </button>
+          </div>
+        </form>
       </Modal>
     </>
   );

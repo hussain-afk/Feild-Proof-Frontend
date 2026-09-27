@@ -1,200 +1,415 @@
 import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
 import { getVerificationStatusAPI } from "../api/verification.api.js";
 import { socket } from "../services/socket.js";
-import { toast } from "react-hot-toast";
 
 export const context = createContext();
 
 const ContextProvider = ({ children }) => {
   const navigate = useNavigate();
 
-  // App Main States
+  // =========================
+  // STATES
+  // =========================
+
   const [user, setUser] = useState(null);
+
   const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
+
   const [notifications, setNotifications] = useState([]);
+
   const [verificationStatus, setVerificationStatus] = useState([]);
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Initial App Data Loading (Jab Page Load Ho)
+
+  // =========================
+  // LOAD DATA WHEN APP STARTS
+  // =========================
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
 
+        // Get logged-in user
         const currentUser = await getCurrentUser();
+
         setUser(currentUser);
 
-        if (currentUser) {
-          // MANAGER DATA LOAD
-          if (currentUser.role === "manager") {
-            const usersData = await getAllUsers();
-            const tasksData = await getAllTasks();
-            const verificationsData = await getVerificationStatusAPI();
+        // If user is not logged in
+        if (!currentUser) {
+          setIsLoading(false);
+          return;
+        }
 
-            setAllUsers(usersData || []);
-            setAllTasks(tasksData || []);
-            setVerificationStatus(verificationsData || []);
 
-            if (window.location.pathname === "/") navigate("/manager");
-          }
+        // =========================
+        // MANAGER DATA
+        // =========================
 
-          // WORKER DATA LOAD
-          if (currentUser.role === "worker") {
-            const workerTasks = await getMyTasks();
-            const workerNotifications = await getNotifications();
+        if (currentUser.role === "manager") {
+          const users = await getAllUsers();
+          const tasks = await getAllTasks();
+          const verifications = await getVerificationStatusAPI();
 
-            setMyTasks(workerTasks || []);
-            setNotifications(workerNotifications || []);
+          setAllUsers(users || []);
+          setAllTasks(tasks || []);
+          setVerificationStatus(verifications || []);
 
-            if (window.location.pathname === "/") navigate("/worker");
+          // If manager is on home page
+          if (window.location.pathname === "/") {
+            navigate("/manager");
           }
         }
+
+
+        // =========================
+        // WORKER DATA
+        // =========================
+
+        if (currentUser.role === "worker") {
+          const tasks = await getMyTasks();
+          const notifications = await getNotifications();
+
+          setMyTasks(tasks || []);
+          setNotifications(notifications || []);
+
+          // If worker is on home page
+          if (window.location.pathname === "/") {
+            navigate("/worker");
+          }
+        }
+
       } catch (error) {
-        console.error("Data load error:", error);
+        console.error("Data loading error:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
+
   }, [navigate]);
 
-  // 2. Real-Time Backup Sync (3 Seconds Auto-Refresh)
+
+  // =========================
+  // AUTO REFRESH EVERY 3 SEC
+  // =========================
+
   useEffect(() => {
     if (!user) return;
 
-    const syncTasks = async () => {
+    const refreshData = async () => {
       try {
+
+        // Manager refresh
         if (user.role === "manager") {
-          const freshTasks = await getAllTasks();
-          const freshVerifications = await getVerificationStatusAPI();
-          setAllTasks(freshTasks || []);
-          setVerificationStatus(freshVerifications || []);
-        } else if (user.role === "worker") {
-          const freshMyTasks = await getMyTasks();
-          setMyTasks(freshMyTasks || []);
+          const tasks = await getAllTasks();
+          const verifications = await getVerificationStatusAPI();
+          const users = await getAllUsers();
+
+          setAllUsers(users || []);
+          setAllTasks(tasks || []);
+          setVerificationStatus(verifications || []);
         }
+
+
+        // Worker refresh
+        if (user.role === "worker") {
+          const tasks = await getMyTasks();
+
+          setMyTasks(tasks || []);
+        }
+
       } catch (error) {
-        console.error("Auto Sync Error:", error);
+        console.error("Auto refresh error:", error);
       }
     };
 
-    const intervalId = setInterval(syncTasks, 3000);
-    return () => clearInterval(intervalId);
+
+    const interval = setInterval(refreshData, 3000);
+
+    return () => {
+      clearInterval(interval);
+    };
+
   }, [user]);
 
-  // 3. Socket.io Real-Time Connection & Live Listener
+
+  // =========================
+  // SOCKET.IO
+  // =========================
+
   useEffect(() => {
-    if (user?._id || user?.id) {
-      const userId = user._id || user.id;
+    if (!user) return;
 
-      socket.connect();
-      socket.emit("join_room", userId);
+    const userId = user._id || user.id;
 
-      // A. Naya Task Assign Hone Par Event
-      const handleNewTaskAssigned = (data = {}) => {
-        const newTask = data.task || data.data;
+    if (!userId) return;
 
-        if (newTask) {
-          const updateTaskArray = (prevTasks) => {
-            const exists = prevTasks.some(
-              (t) => (t._id || t.id) === (newTask._id || newTask.id)
-            );
-            if (exists) {
-              return prevTasks.map((t) =>
-                (t._id || t.id) === (newTask._id || newTask.id) ? newTask : t
-              );
-            }
-            return [newTask, ...prevTasks];
-          };
 
-          setAllTasks(updateTaskArray);
-          setMyTasks(updateTaskArray);
-        }
+    // Connect socket
+    socket.connect();
 
-        if (data.notification) {
-          setNotifications((prevNotifs) => [data.notification, ...prevNotifs]);
-        }
+    // Join user's room
+    socket.emit("join_room", userId);
 
-        toast.success(data.message || "New task assigned!");
-      };
 
-      // B. Jab koi Task Check-In / Check-Out ya Update ho
-      const handleTaskUpdated = (data = {}) => {
-        const updatedTask = data.task || data.data || data;
-        const targetId = updatedTask?._id || updatedTask?.id;
+    // =========================
+    // NEW TASK
+    // =========================
 
-        if (targetId) {
-          const updateTaskArray = (prevTasks) =>
-            prevTasks.map((t) =>
-              (t._id || t.id) === targetId ? { ...t, ...updatedTask } : t
-            );
+    const handleNewTask = (data = {}) => {
 
-          setAllTasks(updateTaskArray);
-          setMyTasks(updateTaskArray);
-        }
-      };
+      const newTask = data.task || data.data;
 
-      // C. Jab Task Delete ho
-      const handleTaskDeleted = (data = {}) => {
-        const targetId = data.taskId || data.id || data.task?._id || data.task?.id;
+      if (newTask) {
 
-        if (targetId) {
-          const filterTaskArray = (prevTasks) =>
-            prevTasks.filter((t) => (t._id || t.id) !== targetId);
+        setAllTasks((oldTasks) => {
 
-          setAllTasks(filterTaskArray);
-          setMyTasks(filterTaskArray);
-        }
-      };
+          const alreadyExists = oldTasks.some(
+            (task) =>
+              (task._id || task.id) ===
+              (newTask._id || newTask.id)
+          );
 
-      // Event Handlers Register Karein
-      socket.on("new_task_assigned", handleNewTaskAssigned);
+          if (alreadyExists) {
+            return oldTasks;
+          }
 
-      ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((event) => {
-        socket.on(event, handleTaskUpdated);
+          return [newTask, ...oldTasks];
+        });
+
+
+        setMyTasks((oldTasks) => {
+
+          const alreadyExists = oldTasks.some(
+            (task) =>
+              (task._id || task.id) ===
+              (newTask._id || newTask.id)
+          );
+
+          if (alreadyExists) {
+            return oldTasks;
+          }
+
+          return [newTask, ...oldTasks];
+        });
+      }
+
+
+      // Add notification
+      if (data.notification) {
+        setNotifications((oldNotifications) => [
+          data.notification,
+          ...oldNotifications,
+        ]);
+      }
+
+
+      toast.success(
+        data.message || "New task assigned!"
+      );
+    };
+
+
+    // =========================
+    // TASK UPDATED
+    // =========================
+
+    const handleTaskUpdate = (data = {}) => {
+
+      const updatedTask =
+        data.task ||
+        data.data ||
+        data;
+
+      const taskId =
+        updatedTask?._id ||
+        updatedTask?.id;
+
+      if (!taskId) return;
+
+
+      // Update manager tasks
+      setAllTasks((oldTasks) =>
+        oldTasks.map((task) => {
+
+          const id = task._id || task.id;
+
+          if (id === taskId) {
+            return {
+              ...task,
+              ...updatedTask,
+            };
+          }
+
+          return task;
+        })
+      );
+
+
+      // Update worker tasks
+      setMyTasks((oldTasks) =>
+        oldTasks.map((task) => {
+
+          const id = task._id || task.id;
+
+          if (id === taskId) {
+            return {
+              ...task,
+              ...updatedTask,
+            };
+          }
+
+          return task;
+        })
+      );
+    };
+
+
+    // =========================
+    // TASK DELETED
+    // =========================
+
+    const handleTaskDelete = (data = {}) => {
+
+      const taskId =
+        data.taskId ||
+        data.id ||
+        data.task?._id ||
+        data.task?.id;
+
+      if (!taskId) return;
+
+
+      // Remove from manager tasks
+      setAllTasks((oldTasks) =>
+        oldTasks.filter(
+          (task) =>
+            (task._id || task.id) !== taskId
+        )
+      );
+
+
+      // Remove from worker tasks
+      setMyTasks((oldTasks) =>
+        oldTasks.filter(
+          (task) =>
+            (task._id || task.id) !== taskId
+        )
+      );
+    };
+
+
+    // =========================
+    // SOCKET EVENTS
+    // =========================
+
+    socket.on(
+      "new_task_assigned",
+      handleNewTask
+    );
+
+
+    const updateEvents = [
+      "task_created",
+      "task_updated",
+      "task_status_updated",
+      "task_updated_by_worker",
+    ];
+
+    updateEvents.forEach((event) => {
+      socket.on(event, handleTaskUpdate);
+    });
+
+
+    const deleteEvents = [
+      "task_deleted",
+      "task_removed",
+    ];
+
+    deleteEvents.forEach((event) => {
+      socket.on(event, handleTaskDelete);
+    });
+
+
+    // =========================
+    // CLEANUP
+    // =========================
+
+    return () => {
+
+      socket.off(
+        "new_task_assigned",
+        handleNewTask
+      );
+
+
+      updateEvents.forEach((event) => {
+        socket.off(
+          event,
+          handleTaskUpdate
+        );
       });
 
-      ["task_deleted", "task_removed"].forEach((event) => {
-        socket.on(event, handleTaskDeleted);
+
+      deleteEvents.forEach((event) => {
+        socket.off(
+          event,
+          handleTaskDelete
+        );
       });
 
-      // Cleanup on Unmount
-      return () => {
-        socket.off("new_task_assigned", handleNewTaskAssigned);
-        ["task_created", "task_updated", "task_status_updated", "task_updated_by_worker"].forEach((event) => {
-          socket.off(event, handleTaskUpdated);
-        });
-        ["task_deleted", "task_removed"].forEach((event) => {
-          socket.off(event, handleTaskDeleted);
-        });
-        socket.disconnect();
-      };
-    }
+
+      socket.disconnect();
+    };
+
   }, [user]);
+
+
+  // =========================
+  // CONTEXT
+  // =========================
 
   return (
     <context.Provider
       value={{
+        isCreateTaskModalOpen,
+        setIsCreateTaskModalOpen,
+
+        paymentModalOpen,
+        setPaymentModalOpen,
+
         user,
         setUser,
+
         allUsers,
         setAllUsers,
+
         allTasks,
         setAllTasks,
+
         myTasks,
         setMyTasks,
+
         notifications,
         setNotifications,
+
         verificationStatus,
         setVerificationStatus,
+
         isLoading,
         setIsLoading,
       }}

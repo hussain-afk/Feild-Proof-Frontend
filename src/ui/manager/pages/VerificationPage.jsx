@@ -2,10 +2,12 @@ import React, { useContext } from "react";
 import VerificationCard from "../components/VerificationCard";
 import { context } from "../../../context/context";
 import { ShieldCheck, Inbox } from "lucide-react";
+import useVerification from "../../../hooks/useVerification";
 
 function VerificationPage() {
+  const { deleteVerification } = useVerification();
   const { verificationStatus } = useContext(context);
-  console.log("verificationStatus in VerificationPage:", verificationStatus);
+  // console.log("verificationStatus in VerificationPage:", verificationStatus);
 
   // Manager Approve Handler
   const handleApprove = (record) => {
@@ -18,6 +20,12 @@ function VerificationPage() {
     console.log("Reject Verification ID:", record._id);
     // API Call: await api.post(`/verify/reject/${record._id}`);
   };
+  // Manager Delete Handler
+  const handleDeleteVerification = async (record) => {
+    console.log("Delete Verification ID:", record._id);
+    // API Call: await api.delete(`/verify/${record._id}`);
+    await deleteVerification(record._id);
+  }
 
   return (
     <div className="min-h-screen text-slate-200 p-4 sm:p-6 lg:p-8">
@@ -50,6 +58,7 @@ function VerificationPage() {
                 verificationData={item}
                 onApprove={handleApprove}
                 onReject={handleReject}
+                onDeleteVerification={handleDeleteVerification}
               />
             ))}
           </div>

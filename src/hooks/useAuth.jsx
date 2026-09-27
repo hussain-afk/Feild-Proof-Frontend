@@ -1,11 +1,11 @@
-import { registerUser, loginUser, logoutUser } from "../api/auth.api.js"
+import { registerUser, loginUser, logoutUser, updatePaymentMethod } from "../api/auth.api.js"
 import Toast from 'react-hot-toast'
-import {useContext} from 'react'
-import {context} from '../context/context.jsx'
+import { useContext } from 'react'
+import { context } from '../context/context.jsx'
 import { useNavigate } from 'react-router-dom'
 
 const useAuth = () => {
-    const {setUser, setIsLoading} = useContext(context)
+    const { setUser, setIsLoading } = useContext(context)
     const navigate = useNavigate()
 
     const register = async (name, email, password) => {
@@ -63,6 +63,40 @@ const useAuth = () => {
             setIsLoading(false)
         }
     }
-    return { register, login, logout }
+
+    const updatePayment = async (
+        userId,
+        bankName,
+        accountNumber,
+        accountHolderName,
+        jazzcashOrEasypaisaNumber
+    ) => {
+        try {
+            // 1. Send JSON Payload instead of FormData
+            const paymentData = {
+                bankName: bankName?.trim() || "",
+                accountNumber: accountNumber?.trim() || "",
+                accountHolderName: accountHolderName?.trim() || "",
+                jazzcashOrEasypaisa: jazzcashOrEasypaisaNumber?.trim() || "",
+            };
+
+            const response = await updatePaymentMethod(userId, paymentData);
+
+            // 2. Correct Toast syntax
+            Toast.success("Payment method updated successfully!");
+            return response;
+        } catch (error) {
+            console.error("Error updating payment method:", error);
+
+            // Extract exact backend error response message
+            const errorMessage =
+                error?.response?.data?.message ||
+                error?.message ||
+                "Error updating payment method";
+
+            Toast.error(errorMessage);
+        }
+    };
+    return { register, login, logout, updatePayment }
 }
 export default useAuth

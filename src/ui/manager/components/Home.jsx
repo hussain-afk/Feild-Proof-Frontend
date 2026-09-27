@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 
 function Home() {
-  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  
   const [selectedTask, setSelectedTask] = useState(null);
 
-  const { allUsers = [], allTasks = [] } = useContext(context);
+  const { allUsers = [], allTasks = [], isCreateTaskModalOpen, setIsCreateTaskModalOpen } = useContext(context);
   const { handleCreateTask } = useTasks();
 
   const [formData, setFormData] = useState({

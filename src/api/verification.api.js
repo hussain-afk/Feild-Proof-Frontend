@@ -4,7 +4,7 @@ const api = axios.create({
     baseURL: `https://feild-proof-backend.onrender.com/api/verify`,
     headers: {
         "Content-Type": "multipart/form-data",
-      },
+    },
     withCredentials: true,
 });
 
@@ -28,10 +28,23 @@ export const verifyCheckOutAPI = async (formData) => {
 
 export const getVerificationStatusAPI = async () => {
     try {
-        const response = await api.get("/verifications",{
+        const response = await api.get("/verifications", {
             headers: {
                 "Content-Type": "application/json",
-              },
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const delVerification = async (verificationId) => {
+    try {
+        const response = await api.delete(`/del-verification/${verificationId}`, {
+            headers: {
+                "Content-Type": "application/json",
+            },
         });
         return response.data;
     } catch (error) {
