@@ -18,6 +18,7 @@ const ContextProvider = ({ children }) => {
   // =========================
 
   const [user, setUser] = useState(null);
+  // console.log("user in context.jsx", user);
 
   const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);

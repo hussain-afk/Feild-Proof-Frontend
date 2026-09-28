@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import useAuth from '../../../hooks/useAuth';
 import { context } from '../../../context/context.jsx';
+import { NavLink } from 'react-router-dom';
 
 function WorkerSidebar({ activeTab = 'tasks', setActiveTab }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -30,10 +31,8 @@ function WorkerSidebar({ activeTab = 'tasks', setActiveTab }) {
   };
 
   const navItems = [
-    { id: 'tasks', label: 'My Assigned Tasks', icon: CheckSquare },
-    { id: 'site', label: 'Active Geofence', icon: MapPin },
-    { id: 'history', label: 'Task History', icon: Clock },
-    { id: 'invoices', label: 'Verified Invoices', icon: FileCheck2 },
+    { id: 'tasks', label: 'My Assigned Tasks', path: '/worker', icon: CheckSquare },
+    { id: 'profile', label: 'Profile', path: `/worker/me/${user?._id}`, icon: ShieldCheck, end: true },
   ];
 
   const handleNavClick = (id) => {
@@ -122,7 +121,8 @@ function WorkerSidebar({ activeTab = 'tasks', setActiveTab }) {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
-                <button
+                <NavLink to={item.path} key={item.id} end={item.end}>
+                  <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group relative ${
@@ -141,6 +141,7 @@ function WorkerSidebar({ activeTab = 'tasks', setActiveTab }) {
                     <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
                   )}
                 </button>
+                </NavLink>
               );
             })}
           </nav>

@@ -1,4 +1,4 @@
-import { registerUser, loginUser, logoutUser, updatePaymentMethod } from "../api/auth.api.js"
+import { registerUser, loginUser, logoutUser, updatePaymentMethod, updateUserProfile } from "../api/auth.api.js"
 import Toast from 'react-hot-toast'
 import { useContext } from 'react'
 import { context } from '../context/context.jsx'
@@ -97,6 +97,28 @@ const useAuth = () => {
             Toast.error(errorMessage);
         }
     };
-    return { register, login, logout, updatePayment }
+    const updateProfile = async (userId, name, email, phone, hourlyRate, password, avatar) => {
+        try {
+            setIsLoading(true)
+            const formData = new FormData()
+            formData.append('name', name)
+            formData.append('email', email)
+            formData.append('phone', phone)
+            formData.append('hourlyRate', hourlyRate)
+            formData.append('password', password)
+            formData.append('avatar', avatar)
+            const response = await updateUserProfile(userId, formData)
+            // console.log('User profile updated successfully:', response)
+            setUser(response)
+            Toast.success('User profile updated successfully')
+            return response
+        } catch (error) {
+            console.error('Error updating user profile:', error)
+            Toast.error(error?.message || 'Error updating user profile')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+    return { register, login, logout, updatePayment, updateProfile }
 }
 export default useAuth

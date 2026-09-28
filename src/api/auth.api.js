@@ -62,6 +62,20 @@ export const updatePaymentMethod = async (userId, paymentData) => {
     }
 }
 
+export const updateUserProfile = async (userId, profileData) => {
+    try {
+        const response = await api.put(`/update-user/${userId}`, profileData,{
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response.data;
+    }
+}
+
 export const logoutUser = async () => {
     try {
         const response = await api.get("/logout");

@@ -8,6 +8,7 @@ import ManagerDashboard from '../ui/manager/pages/HomePage.jsx'
 import WorkerRootLayout from '../ui/worker/WorkerRootLayout.jsx'
 import ManagerRootLayout from '../ui/manager/ManagerRootLayout.jsx'
 import VerificationPage from '../ui/manager/pages/VerificationPage.jsx'
+import ProfilePage from '../ui/ProfilePage.jsx'
 
 const Routing = () => {
     const {user} = useContext(context)
@@ -22,10 +23,12 @@ const Routing = () => {
             <Route path="/" element={<AuthPage />} />
             <Route path="/worker" element={<ProtectedRoute><WorkerRootLayout /></ProtectedRoute>} >
                 <Route index element={<WorkerDashboard />} />
+                <Route path="me/:id" element={<ProfilePage />} />
             </Route>
             <Route path="/manager" element={<ProtectedRoute><ManagerRootLayout /></ProtectedRoute>} >
                 <Route index element={<ManagerDashboard />} />
                 <Route path="verification" element={<VerificationPage />} />
+                <Route path="me/:id" element={<ProfilePage />} />
             </Route>
         </Routes>
     )
