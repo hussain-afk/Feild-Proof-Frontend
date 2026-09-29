@@ -1,19 +1,8 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 import WorkerSidebar from './components/Sidebar'
-import { Menu, Bell } from 'lucide-react'
-import { useContext, useState } from 'react'
-import { context } from '../../context/context'
 
 function WorkerLayout() {
-  const { user, setUser } = useContext(context);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const handleLogout = () => {
-    // setUser(null);
-    // window.location.href = '/login';
-    console.log("Logout clicked");
-  };
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-[#0b0f19] text-slate-100 overflow-x-hidden">
