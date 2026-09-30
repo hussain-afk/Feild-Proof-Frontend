@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import {
   MapPin,
@@ -11,11 +11,15 @@ import {
   Trash2,
   Mail,
   Radio,
+  Users,
+  ChevronDown,
 } from "lucide-react";
 
 import useTasks from "../../../hooks/useTasks.jsx";
 
 function ManagerTaskCard({ task, onViewDetails }) {
+  const [isWorkersOpen, setIsWorkersOpen] = useState(false);
+
   const {
     _id,
     title,
@@ -27,6 +31,13 @@ function ManagerTaskCard({ task, onViewDetails }) {
   } = task || {};
 
   const { handleDeleteTask } = useTasks();
+
+  // Normalize assignedWorker to Always be an Array
+  const workersList = Array.isArray(assignedWorker)
+    ? assignedWorker
+    : assignedWorker
+    ? [assignedWorker]
+    : [];
 
   // -----------------------------
   // Status Badge
@@ -89,7 +100,7 @@ function ManagerTaskCard({ task, onViewDetails }) {
   };
 
   return (
-    <div className="w-full bg-[#111827] border border-slate-800 rounded-xl overflow-hidden">
+    <div className="w-full bg-[#111827] border border-slate-800 rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:border-slate-700">
       {/* --------------------------------
           Card Header
       -------------------------------- */}
@@ -105,9 +116,7 @@ function ManagerTaskCard({ task, onViewDetails }) {
             </h3>
           </div>
 
-          <div className="shrink-0">
-            {getStatusBadge(status)}
-          </div>
+          <div className="shrink-0">{getStatusBadge(status)}</div>
         </div>
 
         <p className="text-sm text-slate-400 leading-relaxed mt-3 line-clamp-2">
@@ -120,57 +129,122 @@ function ManagerTaskCard({ task, onViewDetails }) {
           Card Content
       -------------------------------- */}
       <div className="p-5 space-y-4">
-        {/* Worker */}
+        {/* Workers Collapsible Dropdown */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <User className="w-3.5 h-3.5 text-slate-500" />
-
+            <Users className="w-3.5 h-3.5 text-slate-500" />
             <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
-              Assigned Worker
+              Assigned Workers
             </span>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-[#0b1220] border border-slate-800 rounded-lg">
-            {/* Avatar */}
-            {assignedWorker?.avatar ? (
-              <img
-                src={assignedWorker.avatar}
-                alt={assignedWorker.name || "Worker"}
-                className="w-9 h-9 rounded-lg object-cover border border-slate-700 shrink-0"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm shrink-0">
-                {assignedWorker?.name ? (
-                  assignedWorker.name.charAt(0).toUpperCase()
-                ) : (
-                  <User className="w-4 h-4" />
-                )}
+          {/* Trigger Header Button */}
+          <button
+            type="button"
+            onClick={() => setIsWorkersOpen(!isWorkersOpen)}
+            className="w-full flex items-center justify-between p-3 bg-[#0b1220] border border-slate-800 hover:border-blue-500/40 rounded-xl transition-all duration-200 group"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Stacked Avatars Preview */}
+              <div className="flex -space-x-2 overflow-hidden shrink-0">
+                {workersList.slice(0, 3).map((w, i) => (
+                  <div
+                    key={i}
+                    className="inline-block h-7 w-7 rounded-lg ring-2 ring-[#0b1220] bg-slate-800 overflow-hidden"
+                  >
+                    {w?.avatar ? (
+                      <img
+                        src={w.avatar}
+                        alt={w.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-[10px] font-bold text-slate-300">
+                        {w?.name ? w.name.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
 
-            {/* Worker Info */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-slate-200 truncate">
-                  {assignedWorker?.name || "Unassigned Worker"}
+              <div className="text-left min-w-0">
+                <p className="text-xs font-semibold text-slate-200 group-hover:text-blue-400 transition-colors truncate">
+                  {workersList.length > 0
+                    ? `${workersList.length} Worker${workersList.length > 1 ? "s" : ""} Assigned`
+                    : "No Worker Assigned"}
                 </p>
-
-                {assignedWorker?.role && (
-                  <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[9px] uppercase tracking-wide text-slate-400">
-                    {assignedWorker.role}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
-                <Mail className="w-3 h-3 shrink-0" />
-
-                <span className="truncate">
-                  {assignedWorker?.email || "No email registered"}
-                </span>
+                <p className="text-[10px] text-slate-500 truncate">
+                  {workersList.map((w) => w.name || "Worker").join(", ")}
+                </p>
               </div>
             </div>
-          </div>
+
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform duration-300 shrink-0 ${
+                isWorkersOpen ? "rotate-180 text-blue-400" : ""
+              }`}
+            />
+          </button>
+
+          {/* Collapsible Dropdown Content */}
+          {isWorkersOpen && (
+            <div className="mt-2 p-2 bg-[#090e18] border border-slate-800/90 rounded-xl space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
+              {workersList.length > 0 ? (
+                workersList.map((workerItem, index) => {
+                  const worker = typeof workerItem === "object" ? workerItem : {};
+                  const workerName = worker.name || "Assigned Worker";
+                  const workerEmail = worker.email || "No email registered";
+                  const workerRole = worker.role || "Worker";
+
+                  return (
+                    <div
+                      key={worker._id || worker.id || index}
+                      className="flex items-center gap-2.5 p-2 bg-[#0d1422] border border-slate-800/80 rounded-lg hover:border-slate-700 transition"
+                    >
+                      {/* Avatar */}
+                      {worker.avatar ? (
+                        <img
+                          src={worker.avatar}
+                          alt={workerName}
+                          className="w-7 h-7 rounded-lg object-cover border border-slate-700 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-[10px] shrink-0">
+                          {workerName !== "Assigned Worker" ? (
+                            workerName.charAt(0).toUpperCase()
+                          ) : (
+                            <User className="w-3 h-3" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Worker Details */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-medium text-slate-200 truncate">
+                            {workerName}
+                          </p>
+
+                          <span className="px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700/80 text-[8px] uppercase tracking-wide text-slate-400 shrink-0">
+                            {workerRole}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-500">
+                          <Mail className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">{workerEmail}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-3 text-center text-xs text-slate-500">
+                  No workers assigned yet
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Deadline */}
