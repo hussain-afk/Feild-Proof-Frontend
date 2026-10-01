@@ -23,8 +23,9 @@ const useVerification = () => {
                 setPaymentModalOpen(true);
                 return;
             }
+            toast.error(err);
 
-            throw error;
+            // throw error;
         }
     }
     const verifyCheckOut = async (taskId, latitude, longitude, imageFile) => {
@@ -38,7 +39,7 @@ const useVerification = () => {
             return result;
         } catch (error) {
             toast.error(error?.response?.data?.message || error?.message);
-            throw error;
+            // throw error;
         }
     }
     const deleteVerification = async (verificationId) => {
@@ -47,7 +48,7 @@ const useVerification = () => {
             return result;
         } catch (error) {
             toast.error(error?.response?.data?.message || error?.message);
-            throw error;
+            // throw error;
         }
     }
     return { verifyCheckIn, verifyCheckOut, deleteVerification };

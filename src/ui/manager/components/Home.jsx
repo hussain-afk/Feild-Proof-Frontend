@@ -10,7 +10,7 @@ import Modal from "../../Modal";
 import { context } from "../../../context/context.jsx";
 import useTasks from "../../../hooks/useTasks.jsx";
 import ManagerTaskCard from "./TaskCard.jsx";
-
+import LocationPicker from './LocationPicker.jsx';
 import {
   FileText,
   UserCheck,
@@ -169,8 +169,8 @@ function Home() {
     const list = Array.isArray(task.assignedWorker)
       ? task.assignedWorker
       : task.assignedWorker
-      ? [task.assignedWorker]
-      : [];
+        ? [task.assignedWorker]
+        : [];
 
     // agar sirf ID aayi hai to allUsers mein se dhoondo
     return list.map((w) =>
@@ -382,85 +382,49 @@ function Home() {
           </div>
 
           {/* ---- Site Location ---- */}
-          <div className="border-t border-slate-800 pt-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-              <SectionTitle icon={MapPin} title="Site Location"
-                subtitle="Define the task's geo-fenced area" noMargin />
-
-              <button
-                type="button"
-                onClick={handleGetLiveLocation}
-                className="h-8 px-3 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-xs text-slate-300 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Compass className="w-3.5 h-3.5 text-blue-400" />
-                Get Current Location
-              </button>
+          {/* ---- Site Location Section ---- */}
+          <div className="border-t border-slate-800 pt-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">Site Location & Geofence</h3>
+              <p className="text-xs text-slate-400">Google Maps se location dhoond kar paste karein</p>
             </div>
 
-            <div className="mb-3">
+            {/* Location Name */}
+            <div>
               <label className={labelClass}>Site / Venue Name</label>
               <input
                 type="text"
                 required
                 value={formData.siteLocation.name}
                 onChange={(e) => updateLocation("name", e.target.value)}
-                placeholder="e.g. Warehouse Depot"
+                placeholder="e.g. Zaitoon Ashraf IT Park"
                 className={inputClass}
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className={labelClass}>Latitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={formData.siteLocation.latitude}
-                  onChange={(e) => updateLocation("latitude", e.target.value)}
-                  placeholder="24.8607"
-                  className={inputClass}
-                />
-              </div>
+            {/* Maps Link App Integration */}
+            <LocationPicker
+              siteLocation={formData.siteLocation}
+              setFormData={setFormData}
+            />
 
-              <div>
-                <label className={labelClass}>Longitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={formData.siteLocation.longitude}
-                  onChange={(e) => updateLocation("longitude", e.target.value)}
-                  placeholder="67.0011"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Radius (meters)</label>
-                <div className="relative">
-                  <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.siteLocation.radiusInMeters}
-                    onChange={(e) => updateLocation("radiusInMeters", e.target.value)}
-                    className={`${inputClass} pl-9`}
-                  />
-                </div>
-              </div>
+            {/* Dynamic Radius Selector */}
+            <div>
+              <label className={labelClass}>Allowed Check-in Radius</label>
+              <select
+                value={formData.siteLocation.radiusInMeters}
+                onChange={(e) => updateLocation("radiusInMeters", Number(e.target.value))}
+                className={`${inputClass} cursor-pointer`}
+              >
+                <option value={50}>50m (Very Small Area)</option>
+                <option value={100}>100m (Strict Building Spot)</option>
+                <option value={250}>250m (Small Area / Ground)</option>
+                <option value={500}>500m (Half KM Zone - Recommended)</option>
+                <option value={1000}>1000m (1 KM Zone)</option>
+              </select>
             </div>
-
-            {formData.siteLocation.latitude && formData.siteLocation.longitude && (
-              <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] text-emerald-400">
-                  GPS coordinates added successfully
-                </span>
-              </div>
-            )}
           </div>
+
 
           {/* ---- Buttons ---- */}
           <div className="flex gap-2 pt-2">
@@ -638,13 +602,12 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   return (
     <tr
       onClick={() => !disabled && onToggle(id)}
-      className={`border-t border-slate-800 ${
-        disabled
+      className={`border-t border-slate-800 ${disabled
           ? "opacity-50 cursor-not-allowed"
           : checked
-          ? "bg-blue-500/10 cursor-pointer"
-          : "hover:bg-slate-800/50 cursor-pointer"
-      }`}
+            ? "bg-blue-500/10 cursor-pointer"
+            : "hover:bg-slate-800/50 cursor-pointer"
+        }`}
     >
       <td className="w-10 px-3 py-2">
         <input
@@ -701,9 +664,8 @@ function SectionTitle({ icon: Icon, title, subtitle, blue, noMargin }) {
   return (
     <div className={`flex items-center gap-2 ${noMargin ? "" : "mb-3"}`}>
       <div
-        className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-          blue ? "bg-blue-500/10" : "bg-slate-800"
-        }`}
+        className={`w-7 h-7 rounded-lg flex items-center justify-center ${blue ? "bg-blue-500/10" : "bg-slate-800"
+          }`}
       >
         <Icon className={`w-3.5 h-3.5 ${blue ? "text-blue-400" : "text-slate-300"}`} />
       </div>

@@ -5,6 +5,8 @@ import { useContext } from 'react'
 import { context } from './context/context.jsx'
 import LoadingState from './ui/LoadingState.jsx'
 
+import 'leaflet/dist/leaflet.css';
+
 function App() {
   const { isLoading } = useContext(context)
 
