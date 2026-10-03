@@ -10,25 +10,32 @@ import Modal from "../../Modal";
 import { context } from "../../../context/context.jsx";
 import useTasks from "../../../hooks/useTasks.jsx";
 import ManagerTaskCard from "./TaskCard.jsx";
-import LocationPicker from './LocationPicker.jsx';
+import LocationPicker from "./LocationPicker.jsx";
 import {
   FileText,
   UserCheck,
   MapPin,
-  Compass,
   Plus,
   X,
-  Target,
   CheckCircle2,
   Clock3,
   ListTodo,
+  Loader2,
+  Search,
+  AlertCircle,
+  ExternalLink,
+  CalendarClock,
+  PlayCircle,
 } from "lucide-react";
 
-// Empty form (reset ke liye bhi yehi use hoga)
+/* ------------------------------------------------------------------ */
+/* Constants and helpers                                                */
+/* ------------------------------------------------------------------ */
+
 const emptyForm = {
   title: "",
   description: "",
-  assignedWorker: [], // IDs ka array
+  assignedWorker: [], // array of user IDs
   dueDate: "",
   siteLocation: {
     name: "",
@@ -38,15 +45,60 @@ const emptyForm = {
   },
 };
 
-const inputClass =
-  "w-full h-10 px-3 rounded-lg bg-[#0b1220] border border-slate-800 text-sm text-slate-200 placeholder:text-slate-600 outline-none focus:border-blue-500 transition-colors";
+const STATUS = {
+  pending: {
+    label: "Pending",
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  },
+  "in-progress": {
+    label: "In progress",
+    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  },
+  completed: {
+    label: "Completed",
+    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  },
+};
 
-const labelClass = "block text-xs font-medium text-slate-400 mb-1.5";
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "in-progress", label: "In progress" },
+  { key: "completed", label: "Completed" },
+];
+
+const inputClass =
+  "w-full h-10 px-3 rounded-lg bg-[#0b1220] border border-slate-800 text-sm text-slate-200 placeholder:text-slate-600 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
+
+const labelClass = "block text-xs font-medium text-slate-300 mb-1.5";
+
+const getId = (user) => user._id || user.id;
+const isManager = (user) => user.role?.toLowerCase() === "manager";
+
+const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "Not specified";
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                 */
+/* ------------------------------------------------------------------ */
 
 function Home() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [workerSearch, setWorkerSearch] = useState("");
+  const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [taskSearch, setTaskSearch] = useState("");
 
   const {
     allUsers = [],
@@ -57,16 +109,35 @@ function Home() {
 
   const { handleCreateTask } = useTasks();
 
-  // ---------- Statistics ----------
-  const totalTasks = allTasks.length;
-  const pendingTasks = allTasks.filter((t) => t.status === "pending").length;
-  const inProgressTasks = allTasks.filter((t) => t.status === "in-progress").length;
-  const completedTasks = allTasks.filter((t) => t.status === "completed").length;
+  /* ---------- Statistics ---------- */
+  const counts = useMemo(() => {
+    const c = { all: allTasks.length, pending: 0, "in-progress": 0, completed: 0 };
+    allTasks.forEach((t) => {
+      if (c[t.status] !== undefined) c[t.status] += 1;
+    });
+    return c;
+  }, [allTasks]);
 
-  // ---------- Form helpers ----------
+  const percentOfTotal = (n) =>
+    counts.all ? `${Math.round((n / counts.all) * 100)}% of all tasks` : "No tasks yet";
+
+  /* ---------- Task list filtering ---------- */
+  const visibleTasks = useMemo(() => {
+    const text = taskSearch.trim().toLowerCase();
+    return allTasks.filter((t) => {
+      const matchStatus = statusFilter === "all" || t.status === statusFilter;
+      const matchText =
+        !text ||
+        `${t.title || ""} ${t.siteLocation?.name || ""}`.toLowerCase().includes(text);
+      return matchStatus && matchText;
+    });
+  }, [allTasks, statusFilter, taskSearch]);
+
+  /* ---------- Form helpers ---------- */
   const resetForm = () => {
     setFormData(emptyForm);
     setWorkerSearch("");
+    setFormError("");
   };
 
   const closeCreateModal = () => {
@@ -75,36 +146,13 @@ function Home() {
   };
 
   const updateLocation = (field, value) => {
-    setFormData({
-      ...formData,
-      siteLocation: { ...formData.siteLocation, [field]: value },
-    });
+    setFormData((prev) => ({
+      ...prev,
+      siteLocation: { ...prev.siteLocation, [field]: value },
+    }));
   };
 
-  const handleGetLiveLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData((prev) => ({
-          ...prev,
-          siteLocation: {
-            ...prev.siteLocation,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          },
-        }));
-      },
-      () => alert("Unable to get your current location.")
-    );
-  };
-
-  // ---------- Worker selection ----------
-
-  // typing smooth rahe, isliye search ko "deferred" kiya hai
+  /* ---------- Worker selection ---------- */
   const deferredSearch = useDeferredValue(workerSearch);
 
   const filteredUsers = useMemo(() => {
@@ -114,14 +162,13 @@ function Home() {
     );
   }, [allUsers, deferredSearch]);
 
-  // Set se "selected hai ya nahi" check karna tez hota hai
   const selectedSet = useMemo(
     () => new Set(formData.assignedWorker),
     [formData.assignedWorker]
   );
 
-  // ek worker ko check / uncheck (sirf wahi row dobara render hogi)
   const toggleWorker = useCallback((id) => {
+    setFormError("");
     setFormData((prev) => {
       const set = new Set(prev.assignedWorker);
       set.has(id) ? set.delete(id) : set.add(id);
@@ -129,42 +176,48 @@ function Home() {
     });
   }, []);
 
-  // sirf wo users jo select ho sakte hain (managers nahi)
   const selectableUsers = filteredUsers.filter((u) => !isManager(u));
 
   const allSelected =
     selectableUsers.length > 0 &&
     selectableUsers.every((u) => selectedSet.has(getId(u)));
 
-  // "Select all" checkbox (sirf filtered list ke liye)
   const toggleSelectAll = () => {
     const ids = selectableUsers.map(getId);
-    const newList = allSelected
-      ? formData.assignedWorker.filter((id) => !ids.includes(id))
-      : [...new Set([...formData.assignedWorker, ...ids])];
-    setFormData({ ...formData, assignedWorker: newList });
+    setFormData((prev) => ({
+      ...prev,
+      assignedWorker: allSelected
+        ? prev.assignedWorker.filter((id) => !ids.includes(id))
+        : [...new Set([...prev.assignedWorker, ...ids])],
+    }));
   };
 
-  const clearSelection = () => setFormData({ ...formData, assignedWorker: [] });
+  const clearSelection = () =>
+    setFormData((prev) => ({ ...prev, assignedWorker: [] }));
 
-  // ---------- Create task ----------
+  /* ---------- Create task ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.assignedWorker.length === 0) {
-      alert("Please select at least one worker.");
+      setFormError("Select at least one worker to assign this task.");
       return;
     }
 
+    setFormError("");
+    setIsSubmitting(true);
     try {
       await handleCreateTask(formData);
       closeCreateModal();
     } catch (error) {
       console.error("Create task error:", error);
+      setFormError("Could not create the task. Check your details and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // ---------- Task details: workers ki list ----------
+  /* ---------- Task details: workers ---------- */
   const getWorkers = (task) => {
     const list = Array.isArray(task.assignedWorker)
       ? task.assignedWorker
@@ -172,7 +225,6 @@ function Home() {
         ? [task.assignedWorker]
         : [];
 
-    // agar sirf ID aayi hai to allUsers mein se dhoondo
     return list.map((w) =>
       typeof w === "object"
         ? w
@@ -180,151 +232,255 @@ function Home() {
     );
   };
 
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  const selectedStatus = STATUS[selectedTask?.status] || STATUS.pending;
+  const selectedLoc = selectedTask?.siteLocation;
+  const hasCoords = selectedLoc?.latitude && selectedLoc?.longitude;
+
   return (
     <>
-      <div className="min-h-screen bg-[#0b0f17] text-slate-100 p-4 sm:p-6">
-        {/* ================= HEADER ================= */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Manager Dashboard</p>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white">
-              Field Operations
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Manage field tasks, workers and site locations.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateTaskModalOpen(true)}
-            className="w-full md:w-auto h-10 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Task
-          </button>
-        </div>
-
-        {/* ================= STATS ================= */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <StatCard label="Total Tasks" value={totalTasks} icon={ListTodo}
-            valueColor="text-white" iconColor="text-slate-300" iconBg="bg-slate-800" />
-          <StatCard label="Pending" value={pendingTasks} icon={Clock3}
-            valueColor="text-amber-400" iconColor="text-amber-400" iconBg="bg-amber-500/10" />
-          <StatCard label="In Progress" value={inProgressTasks} icon={Clock3}
-            valueColor="text-blue-400" iconColor="text-blue-400" iconBg="bg-blue-500/10" />
-          <StatCard label="Completed" value={completedTasks} icon={CheckCircle2}
-            valueColor="text-emerald-400" iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
-        </div>
-
-        {/* ================= TASK LIST ================= */}
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-white">All Tasks</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            {totalTasks} task{totalTasks !== 1 ? "s" : ""} available
-          </p>
-        </div>
-
-        {allTasks.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {allTasks.map((taskItem) => (
-              <ManagerTaskCard
-                key={taskItem._id || taskItem.id}
-                task={taskItem}
-                onViewDetails={setSelectedTask}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="min-h-[300px] bg-[#111827] border border-slate-800 rounded-xl flex flex-col items-center justify-center text-center px-6">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4">
-              <ListTodo className="w-5 h-5 text-slate-400" />
+      <div className="min-h-screen bg-[#0b0f17] text-slate-100">
+        <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+          {/* ================= HEADER ================= */}
+          <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
+            <div>
+              <p className="text-sm text-slate-500">{today}</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+                Field operations
+              </h1>
+              <p className="mt-1.5 text-sm text-slate-400">
+                Create tasks, assign workers and track work at each site.
+              </p>
             </div>
-            <h3 className="text-sm font-semibold text-slate-200">
-              No tasks available
-            </h3>
-            <p className="text-xs text-slate-500 max-w-sm mt-1.5">
-              You haven't created any field tasks yet. Create your first task to
-              start managing field operations.
-            </p>
+
             <button
               type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
-              className="mt-4 h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-2 transition-colors"
+              className="inline-flex h-10 w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f17]"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Create First Task
+              <Plus className="h-4 w-4" />
+              Create task
             </button>
-          </div>
-        )}
+          </header>
+
+          {/* ================= STATS ================= */}
+          <section
+            aria-label="Task summary"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8"
+          >
+            <StatCard
+              label="Total tasks"
+              value={counts.all}
+              hint={`${counts.completed} completed`}
+              icon={ListTodo}
+              tone="slate"
+            />
+            <StatCard
+              label="Pending"
+              value={counts.pending}
+              hint={percentOfTotal(counts.pending)}
+              icon={Clock3}
+              tone="amber"
+            />
+            <StatCard
+              label="In progress"
+              value={counts["in-progress"]}
+              hint={percentOfTotal(counts["in-progress"])}
+              icon={PlayCircle}
+              tone="sky"
+            />
+            <StatCard
+              label="Completed"
+              value={counts.completed}
+              hint={percentOfTotal(counts.completed)}
+              icon={CheckCircle2}
+              tone="emerald"
+            />
+          </section>
+
+          {/* ================= TASK LIST ================= */}
+          <section aria-label="Tasks">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4">
+              <div>
+                <h2 className="text-base font-semibold text-white">All tasks</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Showing {visibleTasks.length} of {counts.all} task
+                  {counts.all !== 1 ? "s" : ""}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative sm:w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="search"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    placeholder="Search by title or site"
+                    aria-label="Search tasks"
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+
+                <div
+                  role="tablist"
+                  aria-label="Filter by status"
+                  className="flex overflow-x-auto rounded-lg border border-slate-800 bg-[#0f1624] p-1"
+                >
+                  {FILTERS.map((f) => {
+                    const active = statusFilter === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setStatusFilter(f.key)}
+                        className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                          active
+                            ? "bg-slate-800 text-white"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        {f.label}
+                        <span
+                          className={`rounded px-1.5 text-[10px] ${
+                            active ? "bg-slate-700 text-slate-200" : "text-slate-500"
+                          }`}
+                        >
+                          {counts[f.key]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {allTasks.length === 0 ? (
+              <EmptyState
+                icon={ListTodo}
+                title="No tasks yet"
+                text="Create your first field task to assign workers to a site and start tracking their check-ins."
+                actionLabel="Create first task"
+                onAction={() => setIsCreateTaskModalOpen(true)}
+              />
+            ) : visibleTasks.length === 0 ? (
+              <EmptyState
+                icon={Search}
+                title="No matching tasks"
+                text="Try a different search term or choose another status filter."
+                actionLabel="Clear filters"
+                onAction={() => {
+                  setTaskSearch("");
+                  setStatusFilter("all");
+                }}
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {visibleTasks.map((taskItem) => (
+                  <ManagerTaskCard
+                    key={taskItem._id || taskItem.id}
+                    task={taskItem}
+                    onViewDetails={setSelectedTask}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
       {/* ================= CREATE TASK MODAL ================= */}
       <Modal
         isOpen={isCreateTaskModalOpen}
         onClose={closeCreateModal}
-        title="Create Task"
-        subtitle="Create a field assignment and define its work location."
+        title="Create task"
+        subtitle="Describe the work, choose who does it and where."
       >
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* ---- Task Information ---- */}
-          <div>
-            <SectionTitle icon={FileText} title="Task Information"
-              subtitle="Basic details about the assignment" blue />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ---- Task information ---- */}
+          <Panel>
+            <SectionTitle
+              icon={FileText}
+              title="Task information"
+              subtitle="What needs to be done"
+            />
 
             <div className="mb-3">
-              <label className={labelClass}>Task Title</label>
+              <label htmlFor="task-title" className={labelClass}>
+                Task title
+              </label>
               <input
+                id="task-title"
                 type="text"
                 required
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Enter task title"
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, title: e.target.value }))
+                }
+                placeholder="e.g. Inspect generator at Site B"
                 className={inputClass}
               />
             </div>
 
             <div>
-              <label className={labelClass}>Description</label>
+              <label htmlFor="task-desc" className={labelClass}>
+                Description <span className="text-slate-500">(optional)</span>
+              </label>
               <textarea
+                id="task-desc"
                 rows={3}
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Add instructions or additional notes..."
-                className={`${inputClass} h-auto py-2.5 resize-none`}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, description: e.target.value }))
+                }
+                placeholder="Add instructions, safety notes or what proof is needed."
+                className={`${inputClass} h-auto resize-none py-2.5`}
               />
             </div>
-          </div>
+          </Panel>
 
           {/* ---- Assignment ---- */}
-          <div className="border-t border-slate-800 pt-5">
-            <SectionTitle icon={UserCheck} title="Assignment"
-              subtitle="Choose workers and deadline" />
+          <Panel>
+            <SectionTitle
+              icon={UserCheck}
+              title="Assignment"
+              subtitle="Pick the workers and set a deadline"
+            />
 
-            {/* Due date */}
             <div className="mb-4">
-              <label className={labelClass}>Due Date</label>
+              <label htmlFor="task-due" className={labelClass}>
+                Due date and time
+              </label>
               <input
+                id="task-due"
                 type="datetime-local"
                 required
                 value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, dueDate: e.target.value }))
+                }
                 className={inputClass}
               />
             </div>
 
-            {/* Workers table */}
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={`${labelClass} mb-0`}>Field Workers</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className={`${labelClass} mb-0`}>Field workers</span>
               <div className="flex items-center gap-3">
-                <span className="text-[11px] text-blue-400 font-medium">
+                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-400">
                   {formData.assignedWorker.length} selected
                 </span>
                 {formData.assignedWorker.length > 0 && (
                   <button
                     type="button"
                     onClick={clearSelection}
-                    className="text-[11px] text-slate-400 hover:text-white"
+                    className="text-[11px] text-slate-400 transition hover:text-white"
                   >
                     Clear
                   </button>
@@ -332,25 +488,30 @@ function Home() {
               </div>
             </div>
 
-            <input
-              type="text"
-              value={workerSearch}
-              onChange={(e) => setWorkerSearch(e.target.value)}
-              placeholder="Search worker by name or role..."
-              className={`${inputClass} mb-2`}
-            />
+            <div className="relative mb-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                value={workerSearch}
+                onChange={(e) => setWorkerSearch(e.target.value)}
+                placeholder="Search by name or role"
+                aria-label="Search workers"
+                className={`${inputClass} pl-9`}
+              />
+            </div>
 
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-slate-800">
               <div className="max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-[#111827] z-10">
-                    <tr className="text-left text-[11px] text-slate-500">
+                  <thead className="sticky top-0 z-10 bg-[#111827]">
+                    <tr className="text-left text-[11px] text-slate-400">
                       <th className="w-10 px-3 py-2">
                         <input
                           type="checkbox"
+                          aria-label="Select all workers"
                           checked={allSelected}
                           onChange={toggleSelectAll}
-                          className="w-4 h-4 accent-blue-600 cursor-pointer"
+                          className="h-4 w-4 cursor-pointer accent-sky-600"
                         />
                       </th>
                       <th className="px-3 py-2 font-medium">Worker</th>
@@ -361,8 +522,11 @@ function Home() {
                   <tbody>
                     {filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="px-3 py-6 text-center text-xs text-slate-500">
-                          No workers found
+                        <td
+                          colSpan={3}
+                          className="px-3 py-8 text-center text-xs text-slate-500"
+                        >
+                          No workers match your search.
                         </td>
                       </tr>
                     )}
@@ -379,70 +543,97 @@ function Home() {
                 </table>
               </div>
             </div>
-          </div>
+          </Panel>
 
-          {/* ---- Site Location ---- */}
-          {/* ---- Site Location Section ---- */}
-          <div className="border-t border-slate-800 pt-5 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-200">Site Location & Geofence</h3>
-              <p className="text-xs text-slate-400">Google Maps se location dhoond kar paste karein</p>
-            </div>
-
-            {/* Location Name */}
-            <div>
-              <label className={labelClass}>Site / Venue Name</label>
-              <input
-                type="text"
-                required
-                value={formData.siteLocation.name}
-                onChange={(e) => updateLocation("name", e.target.value)}
-                placeholder="e.g. Zaitoon Ashraf IT Park"
-                className={inputClass}
-              />
-            </div>
-
-            {/* Maps Link App Integration */}
-            <LocationPicker
-              siteLocation={formData.siteLocation}
-              setFormData={setFormData}
+          {/* ---- Site location ---- */}
+          <Panel>
+            <SectionTitle
+              icon={MapPin}
+              title="Site location and geofence"
+              subtitle="Workers can only check in inside this area"
             />
 
-            {/* Dynamic Radius Selector */}
-            <div>
-              <label className={labelClass}>Allowed Check-in Radius</label>
-              <select
-                value={formData.siteLocation.radiusInMeters}
-                onChange={(e) => updateLocation("radiusInMeters", Number(e.target.value))}
-                className={`${inputClass} cursor-pointer`}
-              >
-                <option value={50}>50m (Very Small Area)</option>
-                <option value={100}>100m (Strict Building Spot)</option>
-                <option value={250}>250m (Small Area / Ground)</option>
-                <option value={500}>500m (Half KM Zone - Recommended)</option>
-                <option value={1000}>1000m (1 KM Zone)</option>
-              </select>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="site-name" className={labelClass}>
+                  Site or venue name
+                </label>
+                <input
+                  id="site-name"
+                  type="text"
+                  required
+                  value={formData.siteLocation.name}
+                  onChange={(e) => updateLocation("name", e.target.value)}
+                  placeholder="e.g. Zaitoon Ashraf IT Park"
+                  className={inputClass}
+                />
+              </div>
+
+              <LocationPicker
+                siteLocation={formData.siteLocation}
+                setFormData={setFormData}
+              />
+
+              <div>
+                <label htmlFor="site-radius" className={labelClass}>
+                  Allowed check-in radius
+                </label>
+                <select
+                  id="site-radius"
+                  value={formData.siteLocation.radiusInMeters}
+                  onChange={(e) =>
+                    updateLocation("radiusInMeters", Number(e.target.value))
+                  }
+                  className={`${inputClass} cursor-pointer`}
+                >
+                  <option value={50}>50 m, very small area</option>
+                  <option value={100}>100 m, single building</option>
+                  <option value={250}>250 m, small campus or ground</option>
+                  <option value={500}>500 m, recommended for large sites</option>
+                  <option value={1000}>1 km, wide area</option>
+                </select>
+              </div>
             </div>
-          </div>
+          </Panel>
 
+          {/* ---- Error + actions ---- */}
+          {formError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
 
-          {/* ---- Buttons ---- */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 border-t border-slate-800 pt-4">
             <button
               type="button"
               onClick={closeCreateModal}
-              className="flex-1 h-10 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
               Cancel
             </button>
 
             <button
               type="submit"
-              className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-sky-600 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Plus className="w-4 h-4" />
-              Create Task
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Create task
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -452,95 +643,108 @@ function Home() {
       <Modal
         isOpen={Boolean(selectedTask)}
         onClose={() => setSelectedTask(null)}
-        title="Task Details"
+        title="Task details"
         subtitle={`Task ID: ${selectedTask?._id || "N/A"}`}
       >
         {selectedTask && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <h3 className="text-lg font-semibold text-white">
                   {selectedTask.title}
                 </h3>
-                <span className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-semibold uppercase">
-                  {selectedTask.status || "pending"}
+                <span
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${selectedStatus.badge}`}
+                >
+                  {selectedStatus.label}
                 </span>
               </div>
 
-              <p className="text-sm text-slate-400 leading-relaxed mt-2">
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
                 {selectedTask.description || "No description provided for this task."}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-[#0b1220] border border-slate-800">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                  Assigned Workers
-                </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <InfoBox title="Assigned workers">
                 {getWorkers(selectedTask).length === 0 ? (
                   <p className="text-sm font-medium text-slate-200">Unassigned</p>
                 ) : (
-                  <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+                  <div className="mt-1 max-h-32 space-y-2 overflow-y-auto">
                     {getWorkers(selectedTask).map((w, i) => (
                       <div key={getId(w) || i} className="flex items-center gap-2">
                         <Avatar user={w} size="w-6 h-6" />
-                        <span className="text-sm text-slate-200">{w.name}</span>
+                        <span className="truncate text-sm text-slate-200">
+                          {w.name}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
+              </InfoBox>
 
-              <div className="p-3 rounded-lg bg-[#0b1220] border border-slate-800">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-                  Due Date
-                </p>
-                <p className="text-sm font-medium text-slate-200">
-                  {selectedTask.dueDate
-                    ? new Date(selectedTask.dueDate).toLocaleString()
-                    : "Not specified"}
-                </p>
-              </div>
+              <InfoBox title="Due date">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-slate-500" />
+                  <p className="text-sm font-medium text-slate-200">
+                    {formatDateTime(selectedTask.dueDate)}
+                  </p>
+                </div>
+              </InfoBox>
             </div>
 
-            <div className="p-4 rounded-lg bg-[#0b1220] border border-slate-800">
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-medium text-slate-200">
-                  Site Location
-                </span>
+            <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-sky-400" />
+                  <span className="text-sm font-medium text-slate-200">
+                    Site location
+                  </span>
+                </div>
+
+                {hasCoords && (
+                  <a
+                    href={`https://www.google.com/maps?q=${selectedLoc.latitude},${selectedLoc.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 transition hover:text-sky-300"
+                  >
+                    Open in Maps
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
 
               <p className="text-sm text-slate-300">
-                {selectedTask.siteLocation?.name || "Location not specified"}
+                {selectedLoc?.name || "Location not specified"}
               </p>
 
-              <div className="grid grid-cols-3 gap-3 mt-3">
+              <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-slate-800 pt-3">
                 <div>
-                  <p className="text-[10px] text-slate-500">Latitude</p>
-                  <p className="text-xs text-slate-300 mt-1">
-                    {selectedTask.siteLocation?.latitude || "N/A"}
-                  </p>
+                  <dt className="text-[11px] text-slate-500">Latitude</dt>
+                  <dd className="mt-0.5 text-xs text-slate-300">
+                    {selectedLoc?.latitude || "N/A"}
+                  </dd>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500">Longitude</p>
-                  <p className="text-xs text-slate-300 mt-1">
-                    {selectedTask.siteLocation?.longitude || "N/A"}
-                  </p>
+                  <dt className="text-[11px] text-slate-500">Longitude</dt>
+                  <dd className="mt-0.5 text-xs text-slate-300">
+                    {selectedLoc?.longitude || "N/A"}
+                  </dd>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500">Radius</p>
-                  <p className="text-xs text-slate-300 mt-1">
-                    {selectedTask.siteLocation?.radiusInMeters || 100}m
-                  </p>
+                  <dt className="text-[11px] text-slate-500">Check-in radius</dt>
+                  <dd className="mt-0.5 text-xs text-slate-300">
+                    {selectedLoc?.radiusInMeters || 100} m
+                  </dd>
                 </div>
-              </div>
+              </dl>
             </div>
 
             <button
               type="button"
               onClick={() => setSelectedTask(null)}
-              className="w-full h-10 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-700 transition-colors"
+              className="h-10 w-full rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700"
             >
               Close
             </button>
@@ -551,18 +755,13 @@ function Home() {
   );
 }
 
-// ---------- Chhote reusable components (code repeat na ho isliye) ----------
+/* ------------------------------------------------------------------ */
+/* Small reusable components                                            */
+/* ------------------------------------------------------------------ */
 
-// user ki ID nikalne ka helper
-const getId = (user) => user._id || user.id;
-
-// Manager ko task assign nahi ho sakta
-const isManager = (user) => user.role?.toLowerCase() === "manager";
-
-// Profile picture. Agar picture nahi ya load fail ho jaye to naam ke initials dikhte hain.
-// NOTE: apne backend ke hisaab se field name yahan badal lein (profilePic / avatar / image / photo)
 function Avatar({ user, size = "w-8 h-8" }) {
   const [failed, setFailed] = useState(false);
+  // Change the field name here if your backend uses a different one
   const pic = user.profilePic || user.avatar || user.image || user.photo;
 
   if (pic && !failed) {
@@ -573,7 +772,7 @@ function Avatar({ user, size = "w-8 h-8" }) {
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className={`${size} rounded-full object-cover shrink-0 border border-slate-700`}
+        className={`${size} shrink-0 rounded-full border border-slate-700 object-cover`}
       />
     );
   }
@@ -587,14 +786,14 @@ function Avatar({ user, size = "w-8 h-8" }) {
 
   return (
     <div
-      className={`${size} rounded-full bg-blue-500/15 text-blue-300 text-[11px] font-semibold flex items-center justify-center shrink-0`}
+      className={`${size} flex shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-[11px] font-semibold text-sky-300`}
     >
       {initials}
     </div>
   );
 }
 
-// Table ki ek row. memo ki wajah se sirf badalne wali row dobara render hoti hai (lag nahi aata)
+// memo: only the row that changes re-renders, so long lists stay smooth
 const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   const id = getId(user);
   const disabled = isManager(user);
@@ -602,21 +801,23 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   return (
     <tr
       onClick={() => !disabled && onToggle(id)}
-      className={`border-t border-slate-800 ${disabled
-          ? "opacity-50 cursor-not-allowed"
+      className={`border-t border-slate-800 transition-colors ${
+        disabled
+          ? "cursor-not-allowed opacity-50"
           : checked
-            ? "bg-blue-500/10 cursor-pointer"
-            : "hover:bg-slate-800/50 cursor-pointer"
-        }`}
+            ? "cursor-pointer bg-sky-500/10"
+            : "cursor-pointer hover:bg-slate-800/50"
+      }`}
     >
       <td className="w-10 px-3 py-2">
         <input
           type="checkbox"
+          aria-label={`Select ${user.name}`}
           checked={checked}
           disabled={disabled}
           onChange={() => onToggle(id)}
           onClick={(e) => e.stopPropagation()}
-          className="w-4 h-4 accent-blue-600 cursor-pointer disabled:cursor-not-allowed"
+          className="h-4 w-4 cursor-pointer accent-sky-600 disabled:cursor-not-allowed"
         />
       </td>
 
@@ -624,19 +825,19 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
         <div className="flex items-center gap-3">
           <Avatar user={user} />
           <div className="min-w-0">
-            <p className="text-slate-200 truncate">{user.name}</p>
+            <p className="truncate text-slate-200">{user.name}</p>
             {user.email && (
-              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+              <p className="truncate text-[11px] text-slate-500">{user.email}</p>
             )}
           </div>
         </div>
       </td>
 
-      <td className="px-3 py-2 text-slate-400 capitalize">
+      <td className="px-3 py-2 capitalize text-slate-400">
         {user.role || "Worker"}
         {disabled && (
-          <span className="block text-[10px] text-slate-500 normal-case">
-            Can't be assigned
+          <span className="block text-[10px] normal-case text-slate-500">
+            Managers can't be assigned
           </span>
         )}
       </td>
@@ -644,35 +845,88 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   );
 });
 
-function StatCard({ label, value, icon: Icon, valueColor, iconColor, iconBg }) {
+const TONES = {
+  slate: { value: "text-white", icon: "text-slate-300", bg: "bg-slate-800" },
+  amber: { value: "text-amber-400", icon: "text-amber-400", bg: "bg-amber-500/10" },
+  sky: { value: "text-sky-400", icon: "text-sky-400", bg: "bg-sky-500/10" },
+  emerald: {
+    value: "text-emerald-400",
+    icon: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
+};
+
+function StatCard({ label, value, hint, icon: Icon, tone = "slate" }) {
+  const t = TONES[tone];
   return (
-    <div className="bg-[#111827] border border-slate-800 rounded-xl p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-slate-500">{label}</p>
-          <p className={`text-2xl font-semibold mt-1 ${valueColor}`}>{value}</p>
+    <div className="rounded-xl border border-slate-800 bg-[#111827] p-4 sm:p-5">
+      <div className="flex items-start justify-between">
+        <p className="text-sm text-slate-400">{label}</p>
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${t.bg}`}
+        >
+          <Icon className={`h-4 w-4 ${t.icon}`} />
         </div>
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconBg}`}>
-          <Icon className={`w-4 h-4 ${iconColor}`} />
-        </div>
+      </div>
+      <p className={`mt-3 text-3xl font-semibold tabular-nums ${t.value}`}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+    </div>
+  );
+}
+
+function Panel({ children }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-[#0e1522] p-4">
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10">
+        <Icon className="h-4 w-4 text-sky-400" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+        <p className="text-xs text-slate-500">{subtitle}</p>
       </div>
     </div>
   );
 }
 
-function SectionTitle({ icon: Icon, title, subtitle, blue, noMargin }) {
+function InfoBox({ title, children }) {
   return (
-    <div className={`flex items-center gap-2 ${noMargin ? "" : "mb-3"}`}>
-      <div
-        className={`w-7 h-7 rounded-lg flex items-center justify-center ${blue ? "bg-blue-500/10" : "bg-slate-800"
-          }`}
+    <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3">
+      <p className="mb-1.5 text-xs text-slate-500">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, text, actionLabel, onAction }) {
+  return (
+    <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-[#111827]/60 px-6 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-800">
+        <Icon className="h-5 w-5 text-slate-400" />
+      </div>
+      <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+      <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-slate-500">
+        {text}
+      </p>
+      <button
+        type="button"
+        onClick={onAction}
+        className="mt-5 inline-flex h-9 items-center gap-2 rounded-lg bg-sky-600 px-4 text-xs font-medium text-white transition hover:bg-sky-500"
       >
-        <Icon className={`w-3.5 h-3.5 ${blue ? "text-blue-400" : "text-slate-300"}`} />
-      </div>
-      <div>
-        <h3 className="text-sm font-medium text-slate-200">{title}</h3>
-        <p className="text-[11px] text-slate-500">{subtitle}</p>
-      </div>
+        {actionLabel.toLowerCase().includes("create") && (
+          <Plus className="h-3.5 w-3.5" />
+        )}
+        {actionLabel}
+      </button>
     </div>
   );
 }
