@@ -6,9 +6,7 @@ const useNotification = () => {
     const handleDeleteNotification = async (notificationId) => {
         try {
             const response = await deleteNotification(notificationId);
-            if (response.success) {
-                toast.success("Notification deleted successfully");
-            }
+            toast.success("Notification deleted successfully");
         } catch (error) {
             toast.error("Failed to delete notification");
         }
