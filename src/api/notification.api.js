@@ -17,3 +17,13 @@ export const getNotifications = async () => {
         throw error;
     }
 }
+
+export const deleteNotification = async (notificationId) => {
+    try {
+        const response = await api.delete(`/del-notification/${notificationId}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting notification:", error);
+        throw error;
+    }
+}

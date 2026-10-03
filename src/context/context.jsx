@@ -129,8 +129,10 @@ const ContextProvider = ({ children }) => {
         // Worker refresh
         if (user.role === "worker") {
           const tasks = await getMyTasks();
+          const notifications = await getNotifications();
 
           setMyTasks(tasks || []);
+          setNotifications(notifications || []);
         }
 
       } catch (error) {

@@ -3,6 +3,7 @@ import { context } from "../../../context/context";
 import useVerification from "../../../hooks/useVerification";
 import WorkerTaskCard from "./TaskCard";
 import useAuth from "../../../hooks/useAuth";
+import useNotification from "../../../hooks/useNotification";
 import {
   Bell,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   PlayCircle,
   Loader2,
   AlertCircle,
+  Trash2,
   X,
 } from "lucide-react";
 import Modal from "../../Modal";
@@ -44,13 +46,15 @@ const formatTimeAgo = (isoString) => {
 function WorkerDashboard() {
   const { updatePayment } = useAuth();
   const { verifyCheckIn, verifyCheckOut } = useVerification();
+  const { handleDeleteNotification } = useNotification();
   const { myTasks, notifications, user, paymentModalOpen, setPaymentModalOpen } =
     useContext(context);
+    // console.log("notifications", notifications);
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef(null);
   const bellRef = useRef(null);
-  const [panelTop, setPanelTop] = useState(72); // px, used on mobile only
+  const [panelTop, setPanelTop] = useState(72);
   const [actionError, setActionError] = useState("");
 
   // payment modal state
@@ -216,11 +220,10 @@ function WorkerDashboard() {
                     ? `Notifications, ${unreadCount} unread`
                     : "Notifications"
                 }
-                className={`relative flex h-11 w-11 items-center justify-center rounded-xl border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                  notifOpen
+                className={`relative flex h-11 w-11 items-center justify-center rounded-xl border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${notifOpen
                     ? "border-slate-600 bg-slate-800 text-white"
                     : "border-slate-800 bg-[#111827] text-slate-300 hover:bg-slate-800 hover:text-white"
-                }`}
+                  }`}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -262,30 +265,41 @@ function WorkerDashboard() {
                         {notificationsList.map((notification) => (
                           <li
                             key={notification._id || notification.id}
-                            className={`flex gap-3 px-4 py-3 transition-colors hover:bg-slate-800/40 ${
-                              !notification.isRead ? "bg-sky-500/5" : ""
-                            }`}
+                            className={`flex gap-3 px-4 py-3 transition-colors hover:bg-slate-800/40 ${!notification.isRead ? "bg-sky-500/5" : ""
+                              }`}
                           >
                             <span
                               aria-hidden="true"
-                              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                                !notification.isRead ? "bg-sky-500" : "bg-transparent"
-                              }`}
+                              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!notification.isRead ? "bg-sky-500" : "bg-transparent"
+                                }`}
                             />
+
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-3">
                                 <p
-                                  className={`truncate text-sm ${
-                                    !notification.isRead
+                                  className={`truncate text-sm ${!notification.isRead
                                       ? "font-semibold text-white"
                                       : "font-medium text-slate-300"
-                                  }`}
+                                    }`}
                                 >
                                   {notification.title}
                                 </p>
-                                <span className="shrink-0 text-[11px] text-slate-500">
-                                  {formatTimeAgo(notification.createdAt)}
-                                </span>
+
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <span className="text-[11px] text-slate-500">
+                                    {formatTimeAgo(notification.createdAt)}
+                                  </span>
+
+                                  {/* Delete Button - UI Only */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteNotification(notification._id)}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/70 text-slate-400 transition-all hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
+                                    title="Delete notification"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
 
                               <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-400">
@@ -296,11 +310,14 @@ function WorkerDashboard() {
                                 <span className="truncate">
                                   {notification.sender?.name || "Manager"}
                                 </span>
+
                                 {notification.task?.siteLocation?.name && (
                                   <>
                                     <span aria-hidden="true">&middot;</span>
+
                                     <span className="inline-flex min-w-0 items-center gap-1 text-sky-400">
                                       <MapPin className="h-3 w-3 shrink-0" />
+
                                       <span className="truncate">
                                         {notification.task.siteLocation.name}
                                       </span>
@@ -317,9 +334,11 @@ function WorkerDashboard() {
                         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800">
                           <Bell className="h-5 w-5 text-slate-400" />
                         </div>
+
                         <p className="text-sm font-medium text-slate-200">
                           No notifications yet
                         </p>
+
                         <p className="mt-1 text-xs text-slate-500">
                           Task updates from your manager will show up here.
                         </p>
