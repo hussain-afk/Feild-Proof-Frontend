@@ -50,6 +50,7 @@ function WorkerDashboard() {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef(null);
   const bellRef = useRef(null);
+  const [panelTop, setPanelTop] = useState(72); // px, used on mobile only
   const [actionError, setActionError] = useState("");
 
   // payment modal state
@@ -94,10 +95,21 @@ function WorkerDashboard() {
       }
     };
 
+    // On mobile the panel is fixed to the screen, so place it just below the bell
+    const updatePosition = () => {
+      const rect = bellRef.current?.getBoundingClientRect();
+      if (rect) setPanelTop(Math.round(rect.bottom + 8));
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("touchstart", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("touchstart", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
@@ -222,7 +234,8 @@ function WorkerDashboard() {
                 <div
                   role="dialog"
                   aria-label="Notifications"
-                  className="fp-pop absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] origin-top-right overflow-hidden rounded-xl border border-slate-700/80 bg-[#111827] shadow-2xl shadow-black/50"
+                  style={{ "--fp-top": `${panelTop}px` }}
+                  className="fp-pop fixed inset-x-3 top-[var(--fp-top)] z-50 origin-top overflow-hidden rounded-xl border border-slate-700/80 bg-[#111827] shadow-2xl shadow-black/50 sm:absolute sm:inset-x-auto sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:origin-top-right"
                 >
                   {/* Panel header */}
                   <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
