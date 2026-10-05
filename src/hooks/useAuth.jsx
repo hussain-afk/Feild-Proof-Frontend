@@ -21,6 +21,9 @@ const useAuth = () => {
             if (response.role === 'manager') {
                 navigate('/manager')
             }
+            if(response.role === 'admin'){
+                navigate('/admin')
+            }
         } catch (error) {
             // console.error('Error registering user:', error)
             Toast.error(error?.message || 'Error registering user')
@@ -41,6 +44,9 @@ const useAuth = () => {
             }
             if (response.role === 'manager') {
                 navigate('/manager')
+            }
+            if(response.role === 'admin'){
+                navigate('/admin')
             }
         } catch (error) {
             // console.error('Error logging in user:', error)
@@ -115,6 +121,7 @@ const useAuth = () => {
         } catch (error) {
             console.error('Error updating user profile:', error)
             Toast.error(error?.message || 'Error updating user profile')
+            throw error // Rethrow the error to allow the calling component to handle it
         } finally {
             setIsLoading(false)
         }
