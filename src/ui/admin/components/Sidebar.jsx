@@ -1,10 +1,7 @@
-import React, { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect } from "react";
 import {
   LayoutDashboard,
-  ScrollText,
   Users,
-  ListTodo,
-  UserCircle,
   LogOut,
   ChevronLeft,
   ChevronRight,

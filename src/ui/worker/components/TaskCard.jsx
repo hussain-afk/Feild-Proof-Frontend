@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 import {
   MapPin,
@@ -98,9 +98,10 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
 
-    if (file) {
-      setImageFile(file);
-    }
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) return;
+    setImageFile(file);
   };
 
   // -----------------------------

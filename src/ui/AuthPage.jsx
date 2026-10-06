@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import { useState, useContext } from "react";
 import useAuth from "../hooks/useAuth";
 import { context } from "../context/context.jsx";
 
@@ -263,7 +263,7 @@ function AuthPage() {
             {/* Footer */}
             <div className="relative mt-7 hidden border-t border-white/[0.06] pt-4 lg:block">
               <p className="text-[10px] text-slate-600">
-                FieldProof Platform Engine ©{" "}
+                FieldProof Platform Engine Â©{" "}
                 {new Date().getFullYear()}
               </p>
             </div>
@@ -482,7 +482,7 @@ function AuthPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                       className="
                         w-full
                         rounded-xl

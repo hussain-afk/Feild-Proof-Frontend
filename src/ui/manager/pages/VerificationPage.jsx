@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import VerificationCard from "../components/VerificationCard";
 import { context } from "../../../context/context";
 import { ShieldCheck, Inbox } from "lucide-react";

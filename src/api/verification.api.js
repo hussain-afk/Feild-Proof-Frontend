@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_URL } from "./config.js";
 
 const api = axios.create({
-    baseURL: `https://feild-proof-backend.onrender.com/api/verify`,
+    baseURL: `${API_URL}/api/verify`,
     headers: {
         "Content-Type": "multipart/form-data",
     },
@@ -9,45 +10,29 @@ const api = axios.create({
 });
 
 export const verifyCheckInAPI = async (formData) => {
-    try {
-        const response = await api.post("/check-in", formData);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.post("/check-in", formData);
+    return response.data;
 }
 
 export const verifyCheckOutAPI = async (formData) => {
-    try {
-        const response = await api.post("/check-out", formData);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.post("/check-out", formData);
+    return response.data;
 }
 
 export const getVerificationStatusAPI = async () => {
-    try {
-        const response = await api.get("/verifications", {
+    const response = await api.get("/verifications", {
             headers: {
                 "Content-Type": "application/json",
             },
         });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    return response.data;
 }
 
 export const delVerification = async (verificationId) => {
-    try {
-        const response = await api.delete(`/del-verification/${verificationId}`, {
+    const response = await api.delete(`/del-verification/${verificationId}`, {
             headers: {
                 "Content-Type": "application/json",
             },
         });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    return response.data;
 }

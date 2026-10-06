@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { context } from "../context/context.jsx";
 import { useParams } from "react-router-dom";
 import useAuth from "../hooks/useAuth.jsx";
@@ -66,6 +66,8 @@ const ProfilePage = () => {
   // Sync state when the user in context updates
   useEffect(() => {
     if (user) {
+      // Form state must be refreshed when the authenticated user changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(user.name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");

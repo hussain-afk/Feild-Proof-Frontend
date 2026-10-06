@@ -9,6 +9,7 @@ import { getVerificationStatusAPI } from "../api/verification.api.js";
 import { getAdminInfos } from "../api/admin.api.js";
 import { socket } from "../services/socket.js";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const context = createContext();
 
 // Helpers

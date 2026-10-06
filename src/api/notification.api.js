@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_URL } from "./config.js";
 
 const api = axios.create({
-    baseURL:  "https://feild-proof-backend.onrender.com/api/notifications/",
+    baseURL:  `${API_URL}/api/notifications/`,
     headers: {
         "Content-Type": "application/json",
     },

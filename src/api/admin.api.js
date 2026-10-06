@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_URL } from './config.js';
 
 const api = axios.create({
-  baseURL: 'https://feild-proof-backend.onrender.com/api/admin', // Replace with your API base URL
+  baseURL: `${API_URL}/api/admin`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,8 +14,7 @@ export const getAdminInfos = async () => {
         const response = await api.get('/admin-info');
         return response.data;
     } catch (error) {
-        console.error('Error fetching admin infos:', error);
-        throw error;
+        throw error.response?.data || error;
     }
 }
 
@@ -29,7 +29,15 @@ export const updateProfileByAdmin = async (userId, name, email, phone, hourlyRat
         });
         return response.data;
     } catch (error) {
-        console.error('Error updating profile:', error);
-        throw error;
+        throw error.response?.data || error;
+    }
+}
+
+export const deleteUserByAdmin = async (userId) => {
+    try {
+        const response = await api.delete(`/delete-user/${userId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
     }
 }

@@ -1,13 +1,17 @@
 import {deleteNotification} from '../api/notification.api.js';
 import { toast } from 'react-hot-toast'
+import { useContext } from 'react'
+import { context } from '../context/context.jsx'
 
 const useNotification = () => {
+    const { setNotifications } = useContext(context)
 
     const handleDeleteNotification = async (notificationId) => {
         try {
-            const response = await deleteNotification(notificationId);
+            await deleteNotification(notificationId);
+            setNotifications((items) => items.filter((item) => item._id !== notificationId));
             toast.success("Notification deleted successfully");
-        } catch (error) {
+        } catch {
             toast.error("Failed to delete notification");
         }
     }

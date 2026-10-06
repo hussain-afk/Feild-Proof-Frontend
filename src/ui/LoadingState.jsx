@@ -1,5 +1,4 @@
 
-import React from "react";
 import { ShieldCheck, LockKeyhole, Wifi, Database } from "lucide-react";
 
 function LoadingState() {
@@ -155,7 +154,7 @@ function LoadingState() {
       {/* Bottom Version */}
       <div className="absolute bottom-5 left-0 right-0 text-center">
         <span className="text-[10px] tracking-[0.2em] uppercase text-slate-700">
-          FieldProof • Secure Workspace
+          FieldProof â€¢ Secure Workspace
         </span>
       </div>
 

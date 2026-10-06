@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast'
 
 
 const useVerification = () => {
-    const { paymentModalOpen, setPaymentModalOpen } = useContext(context)
+    const { setPaymentModalOpen } = useContext(context)
     const verifyCheckIn = async (taskId, latitude, longitude, imageFile) => {
         try {
             const formData = new FormData();
@@ -18,14 +18,14 @@ const useVerification = () => {
             return result;
         } catch (error) {
             const err = error?.response?.data?.message || error?.message
-            if (err === "payment method not set") {
+            if (err?.toLowerCase() === "payment method not set") {
                 toast.error("Payment method not set. Please set your payment method to proceed.");
                 setPaymentModalOpen(true);
                 return;
             }
             toast.error(err);
 
-            // throw error;
+            throw error;
         }
     }
     const verifyCheckOut = async (taskId, latitude, longitude, imageFile) => {
@@ -39,7 +39,7 @@ const useVerification = () => {
             return result;
         } catch (error) {
             toast.error(error?.response?.data?.message || error?.message);
-            // throw error;
+            throw error;
         }
     }
     const deleteVerification = async (verificationId) => {
@@ -48,7 +48,7 @@ const useVerification = () => {
             return result;
         } catch (error) {
             toast.error(error?.response?.data?.message || error?.message);
-            // throw error;
+            throw error;
         }
     }
     return { verifyCheckIn, verifyCheckOut, deleteVerification };

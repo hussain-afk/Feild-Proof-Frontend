@@ -62,7 +62,7 @@ const useAuth = () => {
             // console.log('User logged out successfully')
             setUser(null)
             Toast.success('User logged out successfully')
-            navigate('/auth')
+            navigate('/')
         } catch (error) {
             console.error('Error logging out user:', error)
         } finally {
@@ -112,7 +112,7 @@ const useAuth = () => {
             formData.append('phone', phone)
             formData.append('hourlyRate', hourlyRate)
             formData.append('password', password)
-            formData.append('avatar', avatar)
+            if (avatar) formData.append('avatar', avatar)
             const response = await updateUserProfile(userId, formData)
             // console.log('User profile updated successfully:', response)
             setUser(response)

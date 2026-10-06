@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_URL } from "./config.js";
 
 const api = axios.create({
-    baseURL: `https://feild-proof-backend.onrender.com/api/auth/`,
+    baseURL: `${API_URL}/api/auth/`,
     // https://feild-proof-backend.onrender.com
     headers: {
         "Content-Type": "application/json",
@@ -18,7 +19,7 @@ export const registerUser = async (name, email, password) => {
         });
         return response.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response?.data || error;
     }
 }
 
@@ -30,7 +31,7 @@ export const loginUser = async (email, password) => {
         });
         return response.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response?.data || error;
     }
 }
 
@@ -39,7 +40,7 @@ export const getCurrentUser = async () => {
         const response = await api.get("/me");
         return response.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response?.data || error;
     }
 }
 
@@ -48,7 +49,7 @@ export const getAllUsers = async () => {
         const res = await api.get("/users");
         return res.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response?.data || error;
     }
 }
 
@@ -78,8 +79,8 @@ export const updateUserProfile = async (userId, profileData) => {
 
 export const logoutUser = async () => {
     try {
-        const response = await api.get("/logout");
+        await api.post("/logout");
     } catch (error) {
-        throw error.response.message;
+        throw error.response?.data || error;
     }
 }

@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_URL } from "./config.js";
 
 const api = axios.create({
-    baseURL: `https://feild-proof-backend.onrender.com/api/tasks/`,
+    baseURL: `${API_URL}/api/tasks/`,
     headers: {
         "Content-Type": "application/json",
     },
@@ -9,38 +10,21 @@ const api = axios.create({
 });
 
 export const createTask = async (taskData) => {
-    try {
-        const response = await api.post("/create", taskData);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.post("/create", taskData);
+    return response.data;
 }
 
 export const getMyTasks = async () => {
-    try {
-        const response = await api.get("/my-tasks");
-        // console.log("my tasks api", response.data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.get("/my-tasks");
+    return response.data;
 }
 
 export const getAllTasks = async () => {
-    try {
-        const response = await api.get("/all");
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.get("/all");
+    return response.data;
 }
 
 export const deleteTask = async (taskId) => {
-    try {
-        const response = await api.delete(`/del-task/${taskId}`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await api.delete(`/del-task/${taskId}`);
+    return response.data;
 }

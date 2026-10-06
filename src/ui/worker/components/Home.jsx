@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { context } from "../../../context/context";
 import useVerification from "../../../hooks/useVerification";
 import WorkerTaskCard from "./TaskCard";
@@ -65,7 +65,7 @@ function WorkerDashboard() {
   const [paymentError, setPaymentError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const tasks = Array.isArray(myTasks) ? myTasks : [];
+  const tasks = useMemo(() => (Array.isArray(myTasks) ? myTasks : []), [myTasks]);
   const notificationsList = Array.isArray(notifications) ? notifications : [];
   const unreadCount = notificationsList.filter((n) => !n.isRead).length;
 
@@ -159,11 +159,13 @@ function WorkerDashboard() {
   };
 
   /* ---------- Check in / out ---------- */
-  const withLocation = (id, imageFile, action, actionName) => {
+  const withLocation = (id, imageFile, action, actionName) =>
+    new Promise((resolve, reject) => {
     setActionError("");
 
     if (!navigator.geolocation) {
       setActionError("Your browser does not support location access.");
+      reject(new Error("Geolocation is not supported"));
       return;
     }
 
@@ -171,19 +173,22 @@ function WorkerDashboard() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          await action(id, latitude, longitude, imageFile);
+          const result = await action(id, latitude, longitude, imageFile);
+          resolve(result);
         } catch (error) {
           console.error(`${actionName} error:`, error);
           setActionError(`Could not complete ${actionName}. Please try again.`);
+          reject(error);
         }
       },
       () => {
         setActionError(
           `Turn on GPS and allow location access in your browser to ${actionName}.`
         );
+        reject(new Error(`Location access required to ${actionName}`));
       }
     );
-  };
+  });
 
   const handleCheckIn = (id, imageFile) =>
     withLocation(id, imageFile, verifyCheckIn, "check in");
