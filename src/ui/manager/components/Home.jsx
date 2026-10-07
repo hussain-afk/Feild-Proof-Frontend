@@ -73,6 +73,12 @@ const inputClass =
 const labelClass = "block text-xs font-medium text-slate-300 mb-1.5";
 
 const getId = (user) => user._id || user.id;
+
+// Latitude aur longitude dono sach me chune gaye hain ya nahi ("" ko 0 na samjho)
+const hasCoordinates = (loc) =>
+  [loc?.latitude, loc?.longitude].every(
+    (v) => v !== "" && v != null && Number.isFinite(Number(v))
+  );
 const isManager = (user) => user.role?.toLowerCase() === "manager";
 
 const formatDateTime = (value) =>
@@ -95,6 +101,7 @@ function Home() {
   const [formData, setFormData] = useState(emptyForm);
   const [workerSearch, setWorkerSearch] = useState("");
   const [formError, setFormError] = useState("");
+  const [addLocation, setAddLocation] = useState(true); // site location on/off
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -138,6 +145,7 @@ function Home() {
     setFormData(emptyForm);
     setWorkerSearch("");
     setFormError("");
+    setAddLocation(true);
   };
 
   const closeCreateModal = () => {
@@ -204,10 +212,20 @@ function Home() {
       return;
     }
 
+    // Location on hai to map se jagah chuni honi chahiye
+    if (addLocation && !hasCoordinates(formData.siteLocation)) {
+      setFormError("Pick the site on the map, or turn off the site location.");
+      return;
+    }
+
+    // Location off ho to siteLocation bhejte hi nahi
+    const { siteLocation, ...taskWithoutLocation } = formData;
+    const payload = addLocation ? formData : taskWithoutLocation;
+
     setFormError("");
     setIsSubmitting(true);
     try {
-      await handleCreateTask(formData);
+      await handleCreateTask(payload);
       closeCreateModal();
     } catch (error) {
       console.error("Create task error:", error);
@@ -240,7 +258,7 @@ function Home() {
 
   const selectedStatus = STATUS[selectedTask?.status] || STATUS.pending;
   const selectedLoc = selectedTask?.siteLocation;
-  const hasCoords = selectedLoc?.latitude && selectedLoc?.longitude;
+  const hasCoords = hasCoordinates(selectedLoc);
 
   return (
     <>
@@ -545,55 +563,69 @@ function Home() {
             </div>
           </Panel>
 
-          {/* ---- Site location ---- */}
+          {/* ---- Site location (optional) ---- */}
           <Panel>
             <SectionTitle
               icon={MapPin}
               title="Site location and geofence"
-              subtitle="Workers can only check in inside this area"
+              subtitle={
+                addLocation
+                  ? "Workers can only check in inside this area"
+                  : "No location will be saved for this task"
+              }
+              className={addLocation ? "mb-4" : ""}
+              action={
+                <Toggle
+                  checked={addLocation}
+                  onChange={setAddLocation}
+                  label="Add a site location"
+                />
+              }
             />
 
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="site-name" className={labelClass}>
-                  Site or venue name
-                </label>
-                <input
-                  id="site-name"
-                  type="text"
-                  required
-                  value={formData.siteLocation.name}
-                  onChange={(e) => updateLocation("name", e.target.value)}
-                  placeholder="e.g. Zaitoon Ashraf IT Park"
-                  className={inputClass}
+            {addLocation && (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="site-name" className={labelClass}>
+                    Site or venue name
+                  </label>
+                  <input
+                    id="site-name"
+                    type="text"
+                    required
+                    value={formData.siteLocation.name}
+                    onChange={(e) => updateLocation("name", e.target.value)}
+                    placeholder="e.g. Zaitoon Ashraf IT Park"
+                    className={inputClass}
+                  />
+                </div>
+
+                <LocationPicker
+                  siteLocation={formData.siteLocation}
+                  setFormData={setFormData}
                 />
-              </div>
 
-              <LocationPicker
-                siteLocation={formData.siteLocation}
-                setFormData={setFormData}
-              />
-
-              <div>
-                <label htmlFor="site-radius" className={labelClass}>
-                  Allowed check-in radius
-                </label>
-                <select
-                  id="site-radius"
-                  value={formData.siteLocation.radiusInMeters}
-                  onChange={(e) =>
-                    updateLocation("radiusInMeters", Number(e.target.value))
-                  }
-                  className={`${inputClass} cursor-pointer`}
-                >
-                  <option value={50}>50 m, very small area</option>
-                  <option value={100}>100 m, single building</option>
-                  <option value={250}>250 m, small campus or ground</option>
-                  <option value={500}>500 m, recommended for large sites</option>
-                  <option value={1000}>1 km, wide area</option>
-                </select>
+                <div>
+                  <label htmlFor="site-radius" className={labelClass}>
+                    Allowed check-in radius
+                  </label>
+                  <select
+                    id="site-radius"
+                    value={formData.siteLocation.radiusInMeters}
+                    onChange={(e) =>
+                      updateLocation("radiusInMeters", Number(e.target.value))
+                    }
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    <option value={50}>50 m, very small area</option>
+                    <option value={100}>100 m, single building</option>
+                    <option value={250}>250 m, small campus or ground</option>
+                    <option value={500}>500 m, recommended for large sites</option>
+                    <option value={1000}>1 km, wide area</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
           </Panel>
 
           {/* ---- Error + actions ---- */}
@@ -716,9 +748,12 @@ function Home() {
               </div>
 
               <p className="text-sm text-slate-300">
-                {selectedLoc?.name || "Location not specified"}
+                {hasCoords
+                  ? selectedLoc?.name || "Site location"
+                  : "No site location was set for this task."}
               </p>
 
+              {hasCoords && (
               <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-slate-800 pt-3">
                 <div>
                   <dt className="text-[11px] text-slate-500">Latitude</dt>
@@ -739,6 +774,7 @@ function Home() {
                   </dd>
                 </div>
               </dl>
+              )}
             </div>
 
             <button
@@ -884,17 +920,40 @@ function Panel({ children }) {
   );
 }
 
-function SectionTitle({ icon: Icon, title, subtitle }) {
+function SectionTitle({ icon: Icon, title, subtitle, action, className = "mb-4" }) {
   return (
-    <div className="mb-4 flex items-center gap-3">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10">
+    <div className={`flex items-center gap-3 ${className}`}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
         <Icon className="h-4 w-4 text-sky-400" />
       </div>
-      <div>
+      <div className="min-w-0 flex-1">
         <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
         <p className="text-xs text-slate-500">{subtitle}</p>
       </div>
+      {action}
     </div>
+  );
+}
+
+// On/off switch
+function Toggle({ checked, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+        checked ? "bg-sky-600" : "bg-slate-700"
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        }`}
+      />
+    </button>
   );
 }
 

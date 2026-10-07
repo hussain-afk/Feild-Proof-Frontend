@@ -101,6 +101,7 @@ const useAuth = () => {
                 "Error updating payment method";
 
             Toast.error(errorMessage);
+            throw error;
         }
     };
     const updateProfile = async (userId, name, email, phone, hourlyRate, password, avatar) => {
