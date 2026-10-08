@@ -12,17 +12,18 @@ import ProfilePage from '../ui/ProfilePage.jsx'
 import AdminRootLayout from '../ui/admin/AdminRootLayout.jsx'
 import AdminDashboard from '../ui/admin/pages/HomePage.jsx'
 import AdminUsersPage from '../ui/admin/pages/AllUsersPage.jsx'
+import LandingPage from '../ui/LandingPage.jsx'
 
 const RoleProtectedRoute = ({ children, role, user }) => {
         if (!user || user.role !== role) {
-            return <Navigate to="/" replace />;
+            return <Navigate to="/auth" replace />;
         }
         return children;
 };
 
 const AdminProtectedRoute = ({ children, user }) => {
         if (!user || user.role !== "admin") {
-            return <Navigate to="/" replace />;
+            return <Navigate to="/auth" replace />;
         }
         return children;
 };
@@ -31,7 +32,8 @@ const Routing = () => {
     const {user} = useContext(context)
     return (
         <Routes>
-            <Route path="/" element={<AuthPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><WorkerRootLayout /></RoleProtectedRoute>} >
                 <Route index element={<WorkerDashboard />} />
                 <Route path="me/:id" element={<RoleProtectedRoute user={user} role="worker"><ProfilePage /></RoleProtectedRoute>} />

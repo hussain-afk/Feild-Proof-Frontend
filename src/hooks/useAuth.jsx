@@ -60,12 +60,12 @@ const useAuth = () => {
             setIsLoading(true)
             await logoutUser()
             // console.log('User logged out successfully')
-            setUser(null)
             Toast.success('User logged out successfully')
-            navigate('/')
         } catch (error) {
             console.error('Error logging out user:', error)
         } finally {
+            setUser(null)
+            navigate('/')
             setIsLoading(false)
         }
     }

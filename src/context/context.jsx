@@ -134,8 +134,8 @@ const ContextProvider = ({ children }) => {
           setIsVerifyModalOpen(true);
         }
 
-        // Send the user to their own dashboard if they are on "/"
-        if (window.location.pathname === "/") {
+        // Send the user to their own dashboard if they are on "/auth"
+        if (window.location.pathname === "/auth") {
           const home = { manager: "/manager", admin: "/admin", worker: "/worker" };
           if (home[currentUser.role]) navigate(home[currentUser.role]);
         }
