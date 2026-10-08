@@ -77,9 +77,36 @@ export const updateUserProfile = async (userId, profileData) => {
     }
 }
 
+export const sendVerificationCode = async (email) => {
+    try {
+        const response = await api.post("/send-verification-code", { email });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
+export const verifyEmailCode = async (email, code) => {
+    try {
+        const response = await api.post("/verify-email", { email, code });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
 export const logoutUser = async () => {
     try {
         await api.post("/logout");
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
+export const deleteUserByAdmin = async (userId) => {
+    try {
+        const response = await api.delete(`/delete-user/${userId}`);
+        return response.data;
     } catch (error) {
         throw error.response?.data || error;
     }

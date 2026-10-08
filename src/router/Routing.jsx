@@ -44,6 +44,7 @@ const Routing = () => {
             <Route path="/admin" element={<AdminProtectedRoute user={user}><AdminRootLayout /></AdminProtectedRoute>} >
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsersPage />} />
+                <Route path="me/:id" element={<AdminProtectedRoute user={user}><ProfilePage /></AdminProtectedRoute>} />
             </Route>
         </Routes>
     )

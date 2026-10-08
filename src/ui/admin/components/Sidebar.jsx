@@ -8,6 +8,7 @@ import {
   Menu,
   ShieldCheck,
   X,
+  UserCircle,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -50,6 +51,7 @@ function AdminSidebar() {
   const navItems = [
     { id: "overview", label: "Overview", path: "/admin", icon: LayoutDashboard, end: true },
     { id: "users", label: "Users", path: "/admin/users", icon: Users, end: false },
+    { id: "profile", label: "Profile", path: `/admin/me/${user?._id}`, icon: UserCircle, end: false },
   ];
 
   // On desktop the sidebar can be collapsed; on mobile it is always full width

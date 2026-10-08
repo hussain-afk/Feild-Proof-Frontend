@@ -2,12 +2,16 @@ import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
+import { MailWarning } from "lucide-react";
+
 import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
 import { getVerificationStatusAPI } from "../api/verification.api.js";
 import { getAdminInfos } from "../api/admin.api.js";
 import { socket } from "../services/socket.js";
+
+import Modal from "../ui/Modal.jsx";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const context = createContext();
@@ -37,16 +41,21 @@ const ContextProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [verificationStatus, setVerificationStatus] = useState([]);
 
+  // Only controls the "verify your email" warning modal
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const isFetchingRef = useRef(false); // stops two refreshes running together
   const lastFetchRef = useRef(0); // time of the last full fetch
+  const verifyModalShownRef = useRef(false); // warning modal is shown only ONE time
 
   // =========================
   // ONE PLACE TO FETCH DATA FOR EACH ROLE
   // (used by first load, tab focus, and socket reconnect)
+  // NOTE: this function must NOT open any modal
   // =========================
   const fetchRoleData = useCallback(async (role) => {
     if (role === "manager") {
@@ -118,6 +127,12 @@ const ContextProvider = ({ children }) => {
         if (!currentUser) return;
 
         await fetchRoleData(currentUser.role);
+
+        // Show the verification warning only ONE time (not on every reload of data)
+        if (currentUser.isVerified === false && !verifyModalShownRef.current) {
+          verifyModalShownRef.current = true;
+          setIsVerifyModalOpen(true);
+        }
 
         // Send the user to their own dashboard if they are on "/"
         if (window.location.pathname === "/") {
@@ -320,47 +335,87 @@ const ContextProvider = ({ children }) => {
   // CONTEXT
   // =========================
   return (
-    <context.Provider
-      value={{
-        isCreateTaskModalOpen,
-        setIsCreateTaskModalOpen,
+    <>
+      <context.Provider
+        value={{
+          isCreateTaskModalOpen,
+          setIsCreateTaskModalOpen,
 
-        paymentModalOpen,
-        setPaymentModalOpen,
+          paymentModalOpen,
+          setPaymentModalOpen,
 
-        user,
-        setUser,
+          user,
+          setUser,
 
-        allUsers,
-        setAllUsers,
+          allUsers,
+          setAllUsers,
 
-        allTasks,
-        setAllTasks,
+          allTasks,
+          setAllTasks,
 
-        myTasks,
-        setMyTasks,
+          myTasks,
+          setMyTasks,
 
-        notifications,
-        setNotifications,
+          notifications,
+          setNotifications,
 
-        verificationStatus,
-        setVerificationStatus,
+          verificationStatus,
+          setVerificationStatus,
 
-        isLoading,
-        setIsLoading,
+          isLoading,
+          setIsLoading,
 
-        adminInfos,
-        setAdminInfos,
+          adminInfos,
+          setAdminInfos,
 
-        // Handy for a "Refresh" button
-        refresh,
-        addTask,
-        removeTask,
-        fetchRoleData
-      }}
-    >
-      {children}
-    </context.Provider>
+          // Handy for a "Refresh" button
+          refresh,
+          addTask,
+          removeTask,
+          fetchRoleData
+        }}
+      >
+        {children}
+      </context.Provider>
+
+      <Modal
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        title="Verify your email"
+      >
+        <div className="flex flex-col items-center text-center">
+          {/* Icon */}
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10">
+            <MailWarning className="h-7 w-7 text-sky-400" />
+          </div>
+
+          {/* Message */}
+          <h2 className="text-lg font-semibold text-white">
+            Email verification required
+          </h2>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-400">
+            Please verify your email address to unlock all features of your account.
+            Go to your profile to verify.
+          </p>
+
+          {/* Hint box */}
+          <div className="mt-5 w-full rounded-xl border border-slate-800 bg-[#0b1220] px-4 py-3 text-left">
+            <p className="text-xs font-medium text-slate-300">
+              Can't find the email?
+            </p>
+          </div>
+
+          {/* Button */}
+          <button
+            type="button"
+            onClick={() => setIsVerifyModalOpen(false)}
+            className="mt-5 h-10 w-full rounded-lg bg-sky-600 text-sm font-medium text-white transition hover:bg-sky-500"
+          >
+            Got it
+          </button>
+        </div>
+      </Modal>
+    </>
   );
 };
 

@@ -32,12 +32,3 @@ export const updateProfileByAdmin = async (userId, name, email, phone, hourlyRat
         throw error.response?.data || error;
     }
 }
-
-export const deleteUserByAdmin = async (userId) => {
-    try {
-        const response = await api.delete(`/delete-user/${userId}`);
-        return response.data;
-    } catch (error) {
-        throw error.response?.data || error;
-    }
-}

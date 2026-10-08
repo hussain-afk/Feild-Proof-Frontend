@@ -15,7 +15,6 @@ import {
   Loader2,
   AlertCircle,
   Trash2,
-  X,
 } from "lucide-react";
 import Modal from "../../Modal";
 
@@ -29,7 +28,8 @@ const inputClass =
 const labelClass = "block text-xs font-medium text-slate-300 mb-1.5";
 
 // Agar GPS is se zyada galat ho (meters), to check-in/out nahi hone dete
-const MAX_GPS_ACCURACY = 100;
+// (Laptop par development me GPS kai km galat hota hai, isliye wahan ye check band hai)
+const MAX_GPS_ACCURACY = import.meta.env.DEV ? Infinity : 100;
 
 const GEO_ERRORS = {
   1: "Location permission is blocked. Allow location for this site in your browser settings, then try again.",
@@ -45,15 +45,7 @@ const hasSiteLocation = (task) => {
 
   const a = Number(lat);
   const b = Number(lng);
-  return (
-    Number.isFinite(a) &&
-    Number.isFinite(b) &&
-    a >= -90 &&
-    a <= 90 &&
-    b >= -180 &&
-    b <= 180 &&
-    !(a === 0 && b === 0)
-  );
+  return Number.isFinite(a) && Number.isFinite(b) && !(a === 0 && b === 0);
 };
 
 // Browser se GPS position maangta hai (promise ke saath)
@@ -73,7 +65,6 @@ const getPosition = () =>
 const formatTimeAgo = (isoString) => {
   if (!isoString) return "";
   const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
   const diffInSeconds = Math.floor((new Date() - date) / 1000);
 
   if (diffInSeconds < 60) return "Just now";
@@ -97,30 +88,18 @@ function WorkerDashboard() {
   const notifRef = useRef(null);
   const bellRef = useRef(null);
   const [panelTop, setPanelTop] = useState(72); // px, sirf mobile par use hota hai
-  const [actionError, setActionError] = useState("");
 
   // payment modal state
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountHolderName, setAccountHolderName] = useState("");
-  const [jazzcashOrEasypaisaNumber, setJazzcashOrEasypaisaNumber] = useState("");
+  const [jazzcashOrEasypaisaNumber, setJazzcashOrEasypaisaNumber] = useState("jazzcash");
   const [paymentError, setPaymentError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const tasks = useMemo(() => (Array.isArray(myTasks) ? myTasks : []), [myTasks]);
   const notificationsList = Array.isArray(notifications) ? notifications : [];
   const unreadCount = notificationsList.filter((n) => !n.isRead).length;
-
-  // Payment details arrive asynchronously with the authenticated user.
-  useEffect(() => {
-    if (!user) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setBankName(user.paymentMethod?.bankName || "");
-    setAccountNumber(user.paymentMethod?.accountNumber || "");
-    setAccountHolderName(user.paymentMethod?.accountHolderName || "");
-    setJazzcashOrEasypaisaNumber(user.paymentMethod?.jazzcashOrEasypaisa || "");
-  }, [user]);
 
   const counts = useMemo(() => {
     const c = { pending: 0, "in-progress": 0, completed: 0 };
@@ -182,12 +161,6 @@ function WorkerDashboard() {
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
 
-    const userId = user?._id || user?.id;
-    if (!userId) {
-      setPaymentError("Your session has expired. Please sign in again.");
-      return;
-    }
-
     if (
       !bankName.trim() ||
       !accountNumber.trim() ||
@@ -202,7 +175,7 @@ function WorkerDashboard() {
     setIsSaving(true);
     try {
       await updatePayment(
-        userId,
+        user._id,
         bankName,
         accountNumber,
         accountHolderName,
@@ -223,12 +196,10 @@ function WorkerDashboard() {
    *  - Task me site location HAI  -> GPS zaroori, aur signal achha hona chahiye
    *  - Task me site location NAHI -> GPS optional, na mile to bina location ke aage badho
    *
-   * Promise wapas deta hai (resolve = kaam ho gaya, reject = nahi hua),
-   * taake TaskCard apna loading state sahi se band kar sake.
+   * Promise wapas deta hai (resolve = kaam ho gaya, reject = nahi hua).
+   * Reject hone par Error ka message wahi hota hai jo worker ko dikhana hai.
    */
   const runWithLocation = async (taskId, imageFile, action, actionName) => {
-    setActionError("");
-
     const task = tasks.find((t) => String(t._id) === String(taskId));
     const needsLocation = hasSiteLocation(task);
 
@@ -238,16 +209,17 @@ function WorkerDashboard() {
 
     // 1. Location lo
     let position = null;
-    if (needsLocation) {
-      try {
-        position = await getPosition();
-      } catch (geoError) {
-        setActionError(
+    try {
+      position = await getPosition();
+    } catch (geoError) {
+      if (needsLocation) {
+        throw new Error(
           GEO_ERRORS[geoError.code] ||
-            `Your device could not give a location, so you cannot ${actionName} here.`
+            `Your device could not give a location, so you cannot ${actionName} here.`,
+          { cause: geoError }
         );
-        throw geoError;
       }
+      // Task me location nahi hai, to bina GPS ke bhi chalega
     }
 
     if (position) {
@@ -255,10 +227,9 @@ function WorkerDashboard() {
 
       // Kamzor GPS signal worker ko asli jagah se door dikha sakta hai
       if (needsLocation && accuracy > MAX_GPS_ACCURACY) {
-        setActionError(
+        throw new Error(
           `Your GPS signal is weak (accurate to about ${Math.round(accuracy)} m). Move to an open area, wait a few seconds and try again.`
         );
-        throw new Error("GPS signal is too weak");
       }
 
       latitude = lat;
@@ -269,12 +240,12 @@ function WorkerDashboard() {
     try {
       return await action(taskId, latitude, longitude, imageFile);
     } catch (error) {
-      console.error(`${actionName} error:`, error);
-      // Server ka message dikhao (jaise "You are 800m away from the site")
-      setActionError(
-        error?.response?.data?.message || `Could not complete ${actionName}. Please try again.`
+      // Server ka message (jaise "You are 800m away from the site") ya generic message.
+      // TaskCard isko card ke andar dikhata hai.
+      throw new Error(
+        error?.response?.data?.message || `Could not complete ${actionName}. Please try again.`,
+        { cause: error }
       );
-      throw error;
     }
   };
 
@@ -330,7 +301,6 @@ function WorkerDashboard() {
               {notifOpen && (
                 <div
                   role="dialog"
-                  aria-modal="true"
                   aria-label="Notifications"
                   style={{ "--fp-top": `${panelTop}px` }}
                   className="fp-pop fixed inset-x-3 top-[var(--fp-top)] z-50 origin-top overflow-hidden rounded-xl border border-slate-700/80 bg-[#111827] shadow-2xl shadow-black/50 sm:absolute sm:inset-x-auto sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:origin-top-right"
@@ -353,14 +323,12 @@ function WorkerDashboard() {
                   <div className="max-h-[min(26rem,60vh)] overflow-y-auto">
                     {notificationsList.length > 0 ? (
                       <ul className="divide-y divide-slate-800/80">
-                        {notificationsList.map((notification, index) => {
+                        {notificationsList.map((notification) => {
                           const notificationId = notification._id || notification.id;
-                          const notificationKey =
-                            notificationId || `notification-${index}`;
 
                           return (
                             <li
-                              key={notificationKey}
+                              key={notificationId}
                               className={`flex gap-3 px-4 py-3 transition-colors hover:bg-slate-800/40 ${
                                 !notification.isRead ? "bg-sky-500/5" : ""
                               }`}
@@ -391,12 +359,7 @@ function WorkerDashboard() {
 
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        if (notificationId) {
-                                          handleDeleteNotification(notificationId);
-                                        }
-                                      }}
-                                      disabled={!notificationId}
+                                      onClick={() => handleDeleteNotification(notificationId)}
                                       title="Delete notification"
                                       aria-label="Delete notification"
                                       className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/70 text-slate-400 transition-all hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
@@ -454,25 +417,6 @@ function WorkerDashboard() {
               )}
             </div>
           </header>
-
-          {/* ================= ERROR BANNER ================= */}
-          {actionError && (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300"
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p className="flex-1">{actionError}</p>
-              <button
-                type="button"
-                onClick={() => setActionError("")}
-                aria-label="Dismiss"
-                className="text-red-300/70 transition hover:text-red-200"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
 
           {/* ================= SUMMARY ================= */}
           <section
@@ -665,7 +609,7 @@ const TONES = {
 };
 
 function SummaryCard({ label, value, icon: Icon, tone = "slate" }) {
-  const t = TONES[tone] || TONES.slate;
+  const t = TONES[tone];
   return (
     <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#111827] p-4">
       <div>

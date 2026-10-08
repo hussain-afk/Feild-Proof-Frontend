@@ -1,4 +1,4 @@
-import { registerUser, loginUser, logoutUser, updatePaymentMethod, updateUserProfile } from "../api/auth.api.js"
+import { registerUser, loginUser, logoutUser, updatePaymentMethod, updateUserProfile, sendVerificationCode, verifyEmailCode, deleteUserByAdmin } from "../api/auth.api.js"
 import Toast from 'react-hot-toast'
 import { useContext } from 'react'
 import { context } from '../context/context.jsx'
@@ -127,6 +127,51 @@ const useAuth = () => {
             setIsLoading(false)
         }
     }
-    return { register, login, logout, updatePayment, updateProfile }
+
+    const sendEmailVerificationCode = async (email) => {
+        try {
+            setIsLoading(true)
+            const response = await sendVerificationCode(email)
+            Toast.success('Verification code sent successfully')
+            return response
+        } catch (error) {
+            console.error('Error sending verification code:', error)
+            Toast.error(error?.message || 'Error sending verification code')
+            throw error // Rethrow the error to allow the calling component to handle it
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const verifyEmail = async (email, code) => {
+        try {
+            setIsLoading(true)
+            const response = await verifyEmailCode(email, code)
+            Toast.success('Email verified successfully')
+            return response
+        } catch (error) {
+            console.error('Error verifying email:', error)
+            Toast.error(error?.message || 'Error verifying email')
+            throw error // Rethrow the error to allow the calling component to handle it
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const deleteUser = async (userId) => {
+        try {
+            setIsLoading(true)
+            const response = await deleteUserByAdmin(userId)
+            Toast.success('User deleted successfully')
+            return response
+        } catch (error) {
+            console.error('Error deleting user:', error)
+            Toast.error(error?.message || 'Error deleting user')
+            throw error // Rethrow the error to allow the calling component to handle it
+        } finally {
+            setIsLoading(false)
+        }
+    }
+    return { register, login, logout, updatePayment, updateProfile, sendEmailVerificationCode, verifyEmail, deleteUser }
 }
 export default useAuth

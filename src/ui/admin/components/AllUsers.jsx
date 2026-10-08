@@ -1,19 +1,12 @@
 import { useContext, useState } from "react";
-import {
-  MoreHorizontal,
-  Search,
-  Pencil,
-  Trash2,
-  Users,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { Search, Pencil, Trash2, Users, Loader2, AlertCircle } from "lucide-react";
 import { context } from "../../../context/context.jsx";
 import Modal from "../../Modal.jsx";
 import useAdmin from "../../../hooks/useAdmin.jsx";
+import useAuth from "../../../hooks/useAuth.jsx";
 
 /* ------------------------------------------------------------------ */
-/* Small helpers                                                        */
+/* Chhoti cheezein (styles aur helper functions)                        */
 /* ------------------------------------------------------------------ */
 
 const FILTERS = ["all", "admin", "manager", "worker"];
@@ -24,21 +17,18 @@ const ROLE_STYLE = {
   worker: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
 };
 
-// Same grid for the header and every row, so columns line up (desktop only)
-const GRID = "md:grid-cols-[2fr_2fr_1fr_1fr_1fr_40px]";
+// Table ke columns ki chaudai. Header aur har row me wahi use hoti hai, taake columns seedhe rahein
+const GRID = "md:grid-cols-[2fr_2fr_1fr_1fr_1fr_88px]";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-slate-800 bg-[#0b1220] px-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
 
 const formatDate = (date) =>
   date
-    ? new Date(date).toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+    ? new Date(date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
     : "N/A";
 
+// "Ali Khan" -> "AK"
 const getInitials = (name) =>
   name
     ? name
@@ -49,9 +39,10 @@ const getInitials = (name) =>
     : "U";
 
 /* ------------------------------------------------------------------ */
-/* Small components                                                     */
+/* Chhote components                                                    */
 /* ------------------------------------------------------------------ */
 
+// User ki photo, ya photo na ho to naam ke pehle akshar
 function Avatar({ user, size = "h-10 w-10" }) {
   if (user.avatar) {
     return (
@@ -71,17 +62,17 @@ function Avatar({ user, size = "h-10 w-10" }) {
   );
 }
 
+// Role ka rangeen label (admin / manager / worker)
 function RoleBadge({ role }) {
   const style = ROLE_STYLE[role?.toLowerCase()] || "border-slate-700 bg-slate-800 text-slate-400";
   return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${style}`}
-    >
+    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${style}`}>
       {role || "user"}
     </span>
   );
 }
 
+// Label ke saath input
 function Field({ label, children }) {
   return (
     <label className="block">
@@ -91,73 +82,39 @@ function Field({ label, children }) {
   );
 }
 
-// The "..." button and its dropdown
-function ActionMenu({ isOpen, onToggle, onClose, onEdit }) {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label="User actions"
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
-
-      {isOpen && (
-        <>
-          {/* invisible layer: clicking anywhere outside closes the menu */}
-          <div className="fixed inset-0 z-40" onClick={onClose} />
-
-          <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-xl border border-slate-700 bg-[#111827] p-1.5 shadow-2xl shadow-black/40">
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-sky-500/10 hover:text-sky-400"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Update
-            </button>
-
-            {/* Delete button is UI only for now */}
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-red-500/10 hover:text-red-400"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// One user. On mobile it is a card, on desktop it is a table row.
-function UserRow({ user, menuOpen, onToggleMenu, onCloseMenu, onEdit }) {
+/**
+ * Ek user ki ek row.
+ *
+ * Props (parent se aane wali cheezein):
+ *   user     -> is row ke user ka poora data (isme user._id us user ki id hai)
+ *   isSelf   -> true ho to ye wahi user hai jo abhi login hai (usko delete nahi karne dete)
+ *   onEdit   -> Edit button dabane par ye function chalta hai
+ *   onDelete -> Delete button dabane par ye function chalta hai
+ *
+ * Ye component khud kuch delete nahi karta. Wo sirf parent ko batata hai
+ * "is user ko delete karna hai", aur parent (AllUsers) asli kaam karta hai.
+ */
+function UserRow({ user, isSelf, onEdit, onDelete }) {
   return (
     <div
       className={`relative grid gap-3 px-4 py-4 transition-colors hover:bg-white/[0.02] md:items-center md:px-6 ${GRID}`}
     >
-      {/* User */}
-      <div className="flex min-w-0 items-center gap-3 pr-10 md:pr-0">
+      {/* Naam aur photo */}
+      <div className="flex min-w-0 items-center gap-3 pr-20 md:pr-0">
         <Avatar user={user} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white">
-            {user.name || "Unknown user"}
-          </p>
+          <p className="truncate text-sm font-medium text-white">{user.name || "Unknown user"}</p>
           <p className="truncate text-xs text-slate-500 md:hidden">{user.email}</p>
         </div>
       </div>
 
-      {/* Contact (desktop) */}
+      {/* Email aur phone (sirf bari screen par) */}
       <div className="hidden min-w-0 md:block">
         <p className="truncate text-sm text-slate-300">{user.email || "No email"}</p>
         <p className="mt-0.5 text-xs text-slate-500">{user.phone || "No phone"}</p>
       </div>
 
-      {/* Role, rate, joined: one line on mobile, three columns on desktop */}
+      {/* Role, rate aur joined date */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm md:contents">
         <div>
           <RoleBadge role={user.role} />
@@ -169,14 +126,28 @@ function UserRow({ user, menuOpen, onToggleMenu, onCloseMenu, onEdit }) {
         <p className="text-xs text-slate-400 md:text-sm">{formatDate(user.createdAt)}</p>
       </div>
 
-      {/* Actions */}
-      <div className="absolute right-3 top-4 md:static md:flex md:justify-end">
-        <ActionMenu
-          isOpen={menuOpen}
-          onToggle={onToggleMenu}
-          onClose={onCloseMenu}
-          onEdit={onEdit}
-        />
+      {/* Edit aur Delete buttons */}
+      <div className="absolute right-3 top-4 flex gap-1 md:static md:justify-end">
+        <button
+          type="button"
+          onClick={() => onEdit(user)}
+          title="Edit user"
+          aria-label={`Edit ${user.name}`}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-sky-500/10 hover:text-sky-400"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onDelete(user)}
+          disabled={isSelf}
+          title={isSelf ? "You cannot delete your own account" : "Delete user"}
+          aria-label={`Delete ${user.name}`}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -187,35 +158,43 @@ function UserRow({ user, menuOpen, onToggleMenu, onCloseMenu, onEdit }) {
 /* ------------------------------------------------------------------ */
 
 const AllUsers = () => {
-  const { allUsers = [], setAllUsers } = useContext(context);
+  // allUsers = saare users ki list. currentUser = jo abhi login hai
+  const { allUsers = [], setAllUsers, user: currentUser } = useContext(context);
   const { updateUserProfileByAdmin } = useAdmin();
+  const { deleteUser } = useAuth();
 
+  // ----- Search aur filter -----
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [menuId, setMenuId] = useState(null); // user whose menu is open
 
-  const [selected, setSelected] = useState(null); // user being edited
+  // ----- Edit -----
+  const [userToEdit, setUserToEdit] = useState(null); // jis user ko edit kar rahe hain
   const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
-  // ---------- Filtering ----------
+  // ----- Delete -----
+  const [userToDelete, setUserToDelete] = useState(null); // jis user ko delete karna hai
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  /* ---------- Search aur filter lagana ---------- */
   const text = search.trim().toLowerCase();
+
   const visibleUsers = allUsers.filter((user) => {
-    const matchRole = roleFilter === "all" || user.role === roleFilter;
-    const matchText = `${user.name} ${user.email}`.toLowerCase().includes(text);
-    return matchRole && matchText;
+    const roleMatches = roleFilter === "all" || user.role === roleFilter;
+    const textMatches = `${user.name} ${user.email}`.toLowerCase().includes(text);
+    return roleMatches && textMatches;
   });
 
   const countFor = (role) =>
-    role === "all" ? allUsers.length : allUsers.filter((u) => u.role === role).length;
+    role === "all" ? allUsers.length : allUsers.filter((user) => user.role === role).length;
 
-  // ---------- Edit modal ----------
+  /* ---------- Edit ---------- */
   const openEdit = (user) => {
-    setMenuId(null);
-    setError("");
-    setSelected(user);
-    // Start the form with the current values, so nothing gets blanked by mistake
+    setEditError("");
+    setUserToEdit(user);
+    // Form me user ki maujooda values daal do, taake kuch khali na ho jaye
     setForm({
       name: user.name || "",
       email: user.email || "",
@@ -225,18 +204,18 @@ const AllUsers = () => {
     });
   };
 
-  const closeEdit = () => setSelected(null);
+  const closeEdit = () => setUserToEdit(null);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setError("");
+    setIsSaving(true);
+    setEditError("");
 
     try {
       const updated = await updateUserProfileByAdmin(
-        selected._id,
+        userToEdit._id, // <-- user ki id
         form.name,
         form.email,
         form.phone,
@@ -244,15 +223,43 @@ const AllUsers = () => {
         form.role
       );
 
-      // Update the list on screen right away
+      // Screen par list foran update karo
       setAllUsers((users) =>
-        users.map((u) => (u._id === selected._id ? { ...u, ...updated } : u))
+        users.map((user) => (user._id === userToEdit._id ? { ...user, ...updated } : user))
       );
       closeEdit();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Could not update this user.");
+      setEditError(err.response?.data?.message || err.message || "Could not update this user.");
     } finally {
-      setSaving(false);
+      setIsSaving(false);
+    }
+  };
+
+  /* ---------- Delete ---------- */
+  // Step 1: Delete icon dabaya -> confirm window kholo (abhi kuch delete nahi hua)
+  const askToDelete = (user) => {
+    setDeleteError("");
+    setUserToDelete(user);
+  };
+
+  const closeDelete = () => setUserToDelete(null);
+
+  // Step 2: "Yes, delete" dabaya -> asli delete
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      // userToDelete poora user hai. Uski id "_id" me hoti hai.
+      await deleteUser(userToDelete._id);
+
+      // Screen ki list se bhi hata do
+      setAllUsers((users) => users.filter((user) => user._id !== userToDelete._id));
+      closeDelete();
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || "Could not delete this user.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -267,7 +274,7 @@ const AllUsers = () => {
           </p>
         </header>
 
-        {/* ================= Search + filter ================= */}
+        {/* ================= Search aur role filter ================= */}
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative lg:w-80">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -294,18 +301,16 @@ const AllUsers = () => {
                   }`}
                 >
                   {role}
-                  <span className={active ? "text-slate-300" : "text-slate-500"}>
-                    {countFor(role)}
-                  </span>
+                  <span className={active ? "text-slate-300" : "text-slate-500"}>{countFor(role)}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ================= List ================= */}
+        {/* ================= Users ki list ================= */}
         <div className="rounded-xl border border-slate-800 bg-[#111827]">
-          {/* Column titles (desktop only) */}
+          {/* Column ke naam (sirf bari screen par) */}
           <div
             className={`hidden gap-3 rounded-t-xl border-b border-slate-800 bg-[#0e1522] px-6 py-3 text-xs font-medium text-slate-500 md:grid ${GRID}`}
           >
@@ -319,14 +324,15 @@ const AllUsers = () => {
 
           {visibleUsers.length > 0 ? (
             <div className="divide-y divide-slate-800/70">
+              {/* map = list ke har user ke liye ek UserRow banao.
+                  Yahan "user" ek user ka data hai, aur user._id uski id */}
               {visibleUsers.map((user) => (
                 <UserRow
                   key={user._id}
                   user={user}
-                  menuOpen={menuId === user._id}
-                  onToggleMenu={() => setMenuId(menuId === user._id ? null : user._id)}
-                  onCloseMenu={() => setMenuId(null)}
-                  onEdit={() => openEdit(user)}
+                  isSelf={user._id === currentUser?._id}
+                  onEdit={openEdit}
+                  onDelete={askToDelete}
                 />
               ))}
             </div>
@@ -336,48 +342,33 @@ const AllUsers = () => {
                 <Users className="h-5 w-5 text-slate-400" />
               </div>
               <p className="text-sm font-medium text-slate-200">No users found</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Try a different search or role filter.
-              </p>
+              <p className="mt-1 text-xs text-slate-500">Try a different search or role filter.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ================= Edit modal ================= */}
-      <Modal isOpen={Boolean(selected)} onClose={closeEdit} title="Update user">
-        {selected && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Who we are editing */}
+      {/* ================= Edit window ================= */}
+      <Modal isOpen={Boolean(userToEdit)} onClose={closeEdit} title="Update user">
+        {userToEdit && (
+          <form onSubmit={handleSave} className="space-y-4">
+            {/* Kis user ko edit kar rahe hain */}
             <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0b1220] p-3">
-              <Avatar user={selected} size="h-11 w-11" />
+              <Avatar user={userToEdit} size="h-11 w-11" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">{selected.name}</p>
-                <p className="truncate text-xs text-slate-500">
-                  Joined {formatDate(selected.createdAt)}
-                </p>
+                <p className="truncate text-sm font-semibold text-white">{userToEdit.name}</p>
+                <p className="truncate text-xs text-slate-500">Joined {formatDate(userToEdit.createdAt)}</p>
               </div>
-              <RoleBadge role={selected.role} />
+              <RoleBadge role={userToEdit.role} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Name">
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
+                <input name="name" value={form.name} onChange={handleChange} className={inputClass} />
               </Field>
 
               <Field label="Email">
-                <input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
+                <input name="email" type="email" value={form.email} onChange={handleChange} className={inputClass} />
               </Field>
 
               <Field label="Phone">
@@ -416,31 +407,23 @@ const AllUsers = () => {
               </Field>
             </div>
 
-            {error && (
-              <div
-                role="alert"
-                className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300"
-              >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+            {editError && <ErrorBox message={editError} />}
 
             <div className="flex gap-2 border-t border-slate-800 pt-4">
               <button
                 type="button"
                 onClick={closeEdit}
-                disabled={saving}
+                disabled={isSaving}
                 className="h-10 flex-1 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={isSaving}
                 className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-sky-600 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? (
+                {isSaving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Saving...
@@ -453,8 +436,73 @@ const AllUsers = () => {
           </form>
         )}
       </Modal>
+
+      {/* ================= Delete confirm window ================= */}
+      <Modal
+        isOpen={Boolean(userToDelete)}
+        onClose={isDeleting ? () => {} : closeDelete}
+        title="Delete user"
+      >
+        {userToDelete && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0b1220] p-3">
+              <Avatar user={userToDelete} size="h-11 w-11" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">{userToDelete.name}</p>
+                <p className="truncate text-xs text-slate-500">{userToDelete.email}</p>
+              </div>
+              <RoleBadge role={userToDelete.role} />
+            </div>
+
+            <p className="text-sm leading-relaxed text-slate-300">
+              Are you sure you want to delete this user? This cannot be undone.
+            </p>
+
+            {deleteError && <ErrorBox message={deleteError} />}
+
+            <div className="flex gap-2 border-t border-slate-800 pt-4">
+              <button
+                type="button"
+                onClick={closeDelete}
+                disabled={isDeleting}
+                className="h-10 flex-1 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Yes, delete"
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
+
+// Laal error ka dabba
+function ErrorBox({ message }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300"
+    >
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
 
 export default AllUsers;

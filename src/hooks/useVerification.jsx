@@ -1,11 +1,8 @@
 import { verifyCheckInAPI, verifyCheckOutAPI, delVerification } from '../api/verification.api.js'
-import { useContext } from 'react'
-import { context } from '../context/context.jsx'
 import { toast } from 'react-hot-toast'
 
 
 const useVerification = () => {
-    const { setPaymentModalOpen } = useContext(context)
     const verifyCheckIn = async (taskId, latitude, longitude, imageFile) => {
         try {
             const formData = new FormData();
@@ -17,14 +14,8 @@ const useVerification = () => {
             const result = await verifyCheckInAPI(formData);
             return result;
         } catch (error) {
-            const err = error?.response?.data?.message || error?.message
-            if (err?.toLowerCase() === "payment method not set") {
-                toast.error("Payment method not set. Please set your payment method to proceed.");
-                setPaymentModalOpen(true);
-                return;
-            }
+            const err = error?.response?.data?.message || error?.message;
             toast.error(err);
-
             throw error;
         }
     }
