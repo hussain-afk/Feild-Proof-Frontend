@@ -2,10 +2,11 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { context } from "../context/context.jsx";
 import { useParams } from "react-router-dom";
 import useAuth from "../hooks/useAuth.jsx";
-import VerifyEmailModal, {
-  getPendingVerification,
+import VerifyEmailModal from "./VerifyEmailModal.jsx";
+import {
   dismissPendingVerification,
-} from "./VerifyEmailModal.jsx";
+  getPendingVerification,
+} from "../services/verification.storage.js";
 import {
   User,
   Mail,

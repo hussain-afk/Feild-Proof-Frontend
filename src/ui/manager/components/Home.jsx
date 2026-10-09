@@ -219,7 +219,8 @@ function Home() {
     }
 
     // Location off ho to siteLocation bhejte hi nahi
-    const { siteLocation, ...taskWithoutLocation } = formData;
+    const taskWithoutLocation = { ...formData };
+    delete taskWithoutLocation.siteLocation;
     const payload = addLocation ? formData : taskWithoutLocation;
 
     setFormError("");

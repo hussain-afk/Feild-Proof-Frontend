@@ -2,65 +2,19 @@ import { useEffect, useState } from "react";
 import { Loader2, AlertCircle, CheckCircle2, Mail, KeyRound } from "lucide-react";
 import Modal from "./Modal.jsx";
 import useAuth from "../hooks/useAuth.jsx";
+import {
+  clearPendingVerification,
+  getPendingVerification,
+  savePendingVerification,
+} from "../services/verification.storage.js";
 
-/**
- * Email verification in 2 steps:
- *   Step 1: "Send code" dabao  -> email par 6 digit code jata hai
- *   Step 2: code likho + "Verify" dabao
- * Code wali field aur Verify button tab tak disabled rehte hain jab tak code bhej na diya jaye.
- *
- * Use:
- *   <VerifyEmailModal
- *     isOpen={open}
- *     onClose={() => setOpen(false)}
- *     email={user.email}
- *     onVerified={() => setUser((u) => ({ ...u, isVerified: true }))}
- *   />
- */
 
-const RESEND_SECONDS = 60; // naya code mangne se pehle intezar
+const RESEND_SECONDS = 60;
 const CODE_LENGTH = 6;
 
 const inputClass =
   "w-full h-10 rounded-lg bg-[#0b1220] border border-slate-800 px-3 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50";
 
-/* ------------------------------------------------------------------ */
-/* "Code bhej diya gaya" ko yaad rakhna                                  */
-/* ------------------------------------------------------------------ */
-// Worker code dekhne email app ya doosre tab par jata hai. Wapas aane par page reload ho sakta hai
-// (khaas kar phone par), aur React ka state gayab ho jata hai. Isliye code bhejne ka waqt
-// browser me save karte hain, taake wapas aane par modal wahin se shuru ho (code wale step se).
-
-const STORAGE_KEY = "fp-email-verification";
-const CODE_VALID_MS = 10 * 60 * 1000; // code 10 minute chalta hai
-
-const savePending = (email) =>
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, sentAt: Date.now(), dismissed: false }));
-
-const clearPending = () => localStorage.removeItem(STORAGE_KEY);
-
-/** Is email ke liye bheja hua (aur abhi tak chalne wala) code ka record, warna null */
-export const getPendingVerification = (email) => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && saved.email === email && Date.now() - saved.sentAt < CODE_VALID_MS) return saved;
-  } catch {
-    // kharab data ho to ignore
-  }
-  return null;
-};
-
-/** User ne modal band kar diya: ab khud se na kholo, lekin code yaad rakho */
-export const dismissPendingVerification = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved) localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, dismissed: true }));
-  } catch {
-    // ignore
-  }
-};
-
-// Server ka message ho to wo dikhao, warna apna
 const getErrorMessage = (error, fallback) =>
   error?.response?.data?.message || error?.message || fallback;
 
@@ -110,7 +64,7 @@ function VerifyForm({ email, onClose, onVerified }) {
 
     try {
       await sendEmailVerificationCode(email);
-      savePending(email); // wapas aane par yahin se shuru hoga
+      savePendingVerification(email); // wapas aane par yahin se shuru hoga
       setCodeSent(true);
       setSecondsLeft(RESEND_SECONDS);
       setInfo(`We sent a ${CODE_LENGTH} digit code to ${email}. It may take a minute to arrive.`);
@@ -128,7 +82,7 @@ function VerifyForm({ email, onClose, onVerified }) {
 
     try {
       await verifyEmail(email, code);
-      clearPending();
+      clearPendingVerification();
       onVerified?.();
       onClose();
     } catch (err) {
@@ -140,7 +94,7 @@ function VerifyForm({ email, onClose, onVerified }) {
 
   // Cancel dabane ka matlab: ab verify nahi karna, to yaad rakha hua code bhi hata do
   const handleCancel = () => {
-    clearPending();
+    clearPendingVerification();
     onClose();
   };
 

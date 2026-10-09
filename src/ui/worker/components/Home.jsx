@@ -206,6 +206,7 @@ function WorkerDashboard() {
     // Khali string bhejte hain (null nahi), kyunke FormData me null "null" text ban jata hai
     let latitude = "";
     let longitude = "";
+    let gpsAccuracy = ""; // phone batata hai ke location kitni meter tak galat ho sakti hai
 
     // 1. Location lo
     let position = null;
@@ -234,11 +235,12 @@ function WorkerDashboard() {
 
       latitude = lat;
       longitude = lng;
+      gpsAccuracy = Math.round(accuracy);
     }
 
     // 2. Server ko bhejo
     try {
-      return await action(taskId, latitude, longitude, imageFile);
+      return await action(taskId, latitude, longitude, imageFile, gpsAccuracy);
     } catch (error) {
       // Server ka message (jaise "You are 800m away from the site") ya generic message.
       // TaskCard isko card ke andar dikhata hai.
