@@ -141,7 +141,17 @@ const VerificationCard = ({
         <div className="flex items-center gap-3 border-b border-slate-800/70 px-4 py-2.5 sm:border-b-0 sm:border-r">
 
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/50">
-            <User className="h-4 w-4" />
+            {
+              worker?.avatar ? (
+                <img
+                  src={worker.avatar}
+                  alt={worker?.name ? `${worker.name} avatar` : "User avatar"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User className="h-4 w-4" />
+              )
+            }
           </div>
 
           <div className="min-w-0">
