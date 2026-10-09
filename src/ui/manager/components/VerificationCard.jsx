@@ -23,6 +23,8 @@ const VerificationCard = ({
     ? verificationData[0]
     : verificationData;
 
+    console.log(data, "verification data in verification card");
+
   if (!data) {
     return (
       <div className="w-full rounded-xl border border-slate-800 bg-[#0f172a] p-4 text-center text-xs text-slate-400 font-mono">
