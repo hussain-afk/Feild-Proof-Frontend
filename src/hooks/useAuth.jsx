@@ -8,10 +8,10 @@ const useAuth = () => {
     const { setUser, setIsLoading } = useContext(context)
     const navigate = useNavigate()
 
-    const register = async (name, email, password, role) => {
+    const register = async (name, email, password, role, managerId) => {
         try {
             setIsLoading(true)
-            const response = await registerUser(name, email, password, role)
+            const response = await registerUser(name, email, password, role, managerId)
             // console.log('User registered successfully:', response)
             setUser(response)
             Toast.success('User registered successfully')

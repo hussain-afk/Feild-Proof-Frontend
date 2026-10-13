@@ -1,4 +1,3 @@
-import React from 'react'
 import AllManagerRequests from '../components/AllManagerRequests.jsx'
 
 function AllRequests() {

@@ -108,7 +108,7 @@ function Home() {
   const [taskSearch, setTaskSearch] = useState("");
 
   const {
-    allUsers = [],
+    myWorkers = [],
     allTasks = [],
     isCreateTaskModalOpen,
     setIsCreateTaskModalOpen,
@@ -165,10 +165,10 @@ function Home() {
 
   const filteredUsers = useMemo(() => {
     const text = deferredSearch.toLowerCase();
-    return allUsers.filter((u) =>
+    return myWorkers.filter((u) =>
       `${u.name} ${u.role || ""}`.toLowerCase().includes(text)
     );
-  }, [allUsers, deferredSearch]);
+  }, [myWorkers, deferredSearch]);
 
   const selectedSet = useMemo(
     () => new Set(formData.assignedWorker),
@@ -247,7 +247,7 @@ function Home() {
     return list.map((w) =>
       typeof w === "object"
         ? w
-        : allUsers.find((u) => getId(u) === w) || { name: "Unknown" }
+        : myWorkers.find((u) => getId(u) === w) || { name: "Unknown" }
     );
   };
 

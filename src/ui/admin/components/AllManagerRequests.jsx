@@ -299,10 +299,9 @@ function AllManagerRequests() {
     setBusy({ id: requestId, status: newStatus });
 
     try {
-      const res = await updateManagerRequestStatus(requestId, newStatus);
-      console.log("Response from API:", res);
+      await updateManagerRequestStatus(requestId, newStatus);
     } catch (error) {
-      console.error("Could not update the request:", error);
+      // console.error("Could not update the request:", error);
       setErrorMessage(error?.response?.data?.message || error?.message || "Something went wrong. Please try again.");
     } finally {
       setBusy(null);

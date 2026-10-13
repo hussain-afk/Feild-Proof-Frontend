@@ -1,11 +1,8 @@
-import React from "react";
 import {useContext} from "react";
 import {context} from "../../context/context.jsx";
-import useAuth from "../../hooks/useAuth.jsx";
 
 function Pending() {
   const {user} = useContext(context);
-  const {logout} = useAuth();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#07111F] px-4 py-10 text-white">

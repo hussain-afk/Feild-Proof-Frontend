@@ -1,4 +1,5 @@
 import { useState, useContext } from "react";
+
 import useAuth from "../hooks/useAuth";
 import { context } from "../context/context.jsx";
 
@@ -15,35 +16,83 @@ import {
   Receipt,
   CheckCircle2,
   AlertCircle,
+  LogIn,
+  UserPlus,
+  UserCog,
+  ArrowRight,
+  Info,
 } from "lucide-react";
 
 import LoadingState from "../ui/LoadingState.jsx";
 
 /* ------------------------------------------------------------------ */
-/* Tabs. Har tab ke texts yahan hain, kuch badalna ho to sirf yahan     */
+/* Settings (edit the texts here)                                       */
 /* ------------------------------------------------------------------ */
 
+// The role sent to the backend when someone asks for manager access
+const MANAGER_REQUEST_ROLE = "pending_manager";
+
+// Every field of the form. A field shown on the page is ALWAYS required.
+const FIELDS = {
+  name: {
+    label: "Full name",
+    icon: User,
+    type: "text",
+    placeholder: "Your full name",
+    autoComplete: "name",
+  },
+  email: {
+    label: "Email address",
+    icon: Mail,
+    type: "email",
+    placeholder: "name@company.com",
+    autoComplete: "email",
+  },
+  password: {
+    label: "Password",
+    icon: Lock,
+    type: "password",
+    placeholder: "Enter your password",
+  },
+  managerId: {
+    label: "Manager ID",
+    icon: ShieldCheck,
+    type: "text",
+    placeholder: "Enter your manager's ID",
+    autoComplete: "off",
+    hint: "Ask your manager for this ID.",
+  },
+};
+
+// The three tabs. `fields` = which inputs the tab shows (all of them are required).
 const MODES = {
   login: {
     tab: "Sign in",
+    icon: LogIn,
     title: "Welcome back",
     text: "Sign in to open your dashboard.",
     button: "Sign in",
-    showName: false,
+    fields: ["email", "password"],
+    successText: "", // nothing to show: after login the app opens the dashboard
   },
   signup: {
     tab: "Register",
+    icon: UserPlus,
     title: "Create your account",
-    text: "Register to manage and track field tasks.",
+    text: "Register to join an existing manager's team.",
     button: "Create account",
-    showName: true,
+    fields: ["name", "email", "password", "managerId"],
+    successText: "Registration submitted successfully.",
   },
   managerRequest: {
     tab: "Manager request",
-    title: "Create your account and request manager access",
-    text: "Register as usual. An admin reviews every request before manager access is given.",
+    icon: UserCog,
+    title: "Request manager access",
+    text: "Create your account and request manager access.",
     button: "Create account and request access",
-    showName: true,
+    fields: ["name", "email", "password"],
+    successText: "Your account was created and your manager request was sent. An admin will review it.",
+    info: "An admin reviews every manager request before access is given.",
   },
 };
 
@@ -53,11 +102,13 @@ const FEATURES = [
   { icon: Receipt, title: "Automated invoicing", text: "Tracked hours turn into clear billing." },
 ];
 
+const EMPTY_FORM = { name: "", email: "", password: "", managerId: "" };
+
 const inputClass =
-  "h-11 w-full rounded-xl border border-white/10 bg-[#080e19] pl-11 pr-4 text-sm text-slate-100 outline-none placeholder:text-slate-600 transition focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20";
+  "h-11 w-full rounded-xl border border-white/10 bg-[#080e19] pl-11 pr-4 text-sm text-slate-100 outline-none placeholder:text-slate-600 transition hover:border-white/20 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20";
 
 /* ------------------------------------------------------------------ */
-/* Chhote components                                                    */
+/* Small components                                                     */
 /* ------------------------------------------------------------------ */
 
 function Logo() {
@@ -66,6 +117,7 @@ function Logo() {
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30">
         <ShieldCheck className="h-5 w-5" />
       </div>
+
       <div className="leading-tight">
         <p className="text-lg font-bold tracking-tight text-white">
           Field<span className="text-blue-500">Proof</span>
@@ -76,18 +128,23 @@ function Logo() {
   );
 }
 
-// Label + icon + input. type="password" ho to show/hide ki eye bhi aati hai
-function Field({ id, label, icon: Icon, type = "text", ...inputProps }) {
-  const [visible, setVisible] = useState(false);
+// One input with its label. It is always required.
+function Field({ id, label, icon: Icon, type = "text", hint, ...inputProps }) {
+  const [visible, setVisible] = useState(false); // only used by password fields
   const isPassword = type === "password";
 
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-300">
         {label}
+        <span aria-hidden="true" className="ml-0.5 text-red-400">
+          *
+        </span>
       </label>
+
       <div className="relative">
         <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+
         <input
           id={id}
           required
@@ -95,10 +152,11 @@ function Field({ id, label, icon: Icon, type = "text", ...inputProps }) {
           className={`${inputClass} ${isPassword ? "pr-12" : ""}`}
           {...inputProps}
         />
+
         {isPassword && (
           <button
             type="button"
-            onClick={() => setVisible((v) => !v)}
+            onClick={() => setVisible((value) => !value)}
             aria-label={visible ? "Hide password" : "Show password"}
             className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:text-slate-200"
           >
@@ -106,11 +164,13 @@ function Field({ id, label, icon: Icon, type = "text", ...inputProps }) {
           </button>
         )}
       </div>
+
+      {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }
 
-// Error ya kamyabi ka message
+// Green (success) or red (error) message
 function Notice({ notice }) {
   if (!notice) return null;
 
@@ -138,42 +198,65 @@ function Notice({ notice }) {
 
 function AuthPage() {
   const { isLoading } = useContext(context);
+  const { register, login } = useAuth();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("pending_manager"); // Default role for new users
-
-  const [authMode, setAuthMode] = useState("login"); // "login" | "signup" | "managerRequest"
+  const [authMode, setAuthMode] = useState("login");
+  const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState(null); // { type: "success" | "error", text }
 
-  // requestManager: manager request bhejne ka function. useAuth me hona chahiye
-  const { register, login } = useAuth();
-
   const mode = MODES[authMode];
 
+  // Typing in a field: update only that field
+  const handleChange = (key) => (event) => {
+    setForm((previous) => ({ ...previous, [key]: event.target.value }));
+  };
+
+  // Changing the tab: clear the message and the password, keep name and email
   const switchMode = (key) => {
     setAuthMode(key);
     setNotice(null);
+    setForm((previous) => ({ ...previous, password: "", managerId: "" }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setNotice(null);
+
+    // Clean values (extra spaces removed)
+    const values = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      managerId: form.managerId.trim(),
+    };
+
+    // Every field of this tab must have a value (this also catches "   " spaces only)
+    const hasEmptyField = mode.fields.some((key) => !values[key]);
+    if (hasEmptyField) {
+      setNotice({ type: "error", text: "Please fill in all the fields." });
+      return;
+    }
+
+    setLoading(true);
 
     try {
       if (authMode === "login") {
-        await login(email, password);
-      } else if (authMode === "signup") {
-        await register(name, email, password);
-      } else {
-        await register(name, email, password, role); // Pass the role for manager request
-        setNotice({
-          type: "success",
-          text: "Your account was created and your manager request was sent. An admin will review it.",
-        });
+        await login(values.email, values.password);
+      }
+
+      if (authMode === "signup") {
+        // Your useAuth register function must accept managerId as its 5th argument
+        await register(values.name, values.email, values.password, undefined, values.managerId);
+      }
+
+      if (authMode === "managerRequest") {
+        await register(values.name, values.email, values.password, MANAGER_REQUEST_ROLE);
+      }
+
+      if (mode.successText) {
+        setNotice({ type: "success", text: mode.successText });
+        setForm(EMPTY_FORM);
       }
     } catch (error) {
       setNotice({
@@ -191,14 +274,14 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#070b14] px-4 py-8 text-slate-100">
-      {/* Peeche halki roshni */}
+      {/* Background glow */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
         <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
       </div>
 
       <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0d1422] shadow-[0_30px_90px_rgba(0,0,0,0.5)] lg:grid-cols-[1fr_1.1fr]">
-        {/* =============== Left: brand (sirf bari screen par) =============== */}
+        {/* ================= Left: branding (big screens only) ================= */}
         <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.06] bg-gradient-to-br from-blue-950/60 via-[#0d1422] to-[#080c15] p-10 lg:flex">
           <div
             aria-hidden="true"
@@ -215,10 +298,16 @@ function AuthPage() {
           <div className="relative">
             <Logo />
 
-            <h1 className="mt-12 text-3xl font-bold leading-tight tracking-tight text-white">
+            <span className="mt-10 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
+              Live attendance verification
+            </span>
+
+            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-white">
               Work verification and
               <span className="block text-slate-300">automated invoicing</span>
             </h1>
+
             <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">
               Real-time attendance, GPS geo-fenced logs and automated invoicing for your field teams.
             </p>
@@ -227,11 +316,12 @@ function AuthPage() {
               {FEATURES.map(({ icon: Icon, title, text }) => (
                 <li
                   key={title}
-                  className="flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4"
+                  className="flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 transition hover:border-blue-500/30 hover:bg-white/[0.05]"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
+
                   <div>
                     <p className="text-sm font-semibold text-slate-100">{title}</p>
                     <p className="mt-0.5 text-sm text-slate-500">{text}</p>
@@ -246,10 +336,10 @@ function AuthPage() {
           </p>
         </aside>
 
-        {/* =============== Right: form =============== */}
+        {/* ================= Right: form ================= */}
         <main className="p-6 sm:p-10">
           <div className="mx-auto w-full max-w-md">
-            {/* Chhoti screen par logo yahan aata hai */}
+            {/* Logo (small screens only) */}
             <div className="mb-8 lg:hidden">
               <Logo />
             </div>
@@ -260,22 +350,30 @@ function AuthPage() {
               aria-label="Account options"
               className="mb-8 grid grid-cols-3 gap-1 rounded-xl border border-white/[0.07] bg-[#080e19] p-1"
             >
-              {Object.entries(MODES).map(([key, item]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={authMode === key}
-                  onClick={() => switchMode(key)}
-                  className={`rounded-lg px-2 py-2.5 text-sm font-medium transition ${
-                    authMode === key
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  {item.tab}
-                </button>
-              ))}
+              {Object.entries(MODES).map(([key, item]) => {
+                const TabIcon = item.icon;
+                const active = authMode === key;
+
+                return (
+                  <button
+                    key={key}
+                    id={`tab-${key}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-controls="auth-form"
+                    onClick={() => switchMode(key)}
+                    className={`flex flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-xs font-medium leading-tight transition sm:flex-row sm:gap-2 sm:px-2 sm:py-2.5 sm:text-sm ${
+                      active
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <TabIcon className="h-4 w-4 shrink-0" />
+                    {item.tab}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Heading */}
@@ -284,41 +382,38 @@ function AuthPage() {
               <p className="mt-2 text-sm leading-6 text-slate-400">{mode.text}</p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {mode.showName && (
+            {/* Form: it shows the fields of the active tab, and all of them are required */}
+            <form
+              id="auth-form"
+              role="tabpanel"
+              aria-labelledby={`tab-${authMode}`}
+              onSubmit={handleSubmit}
+              className="space-y-4"
+            >
+              {mode.fields.map((key) => (
                 <Field
-                  id="auth-name"
-                  label="Full name"
-                  icon={User}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
-                  autoComplete="name"
+                  key={key}
+                  id={`auth-${key}`}
+                  {...FIELDS[key]}
+                  autoComplete={
+                    key === "password"
+                      ? authMode === "login"
+                        ? "current-password"
+                        : "new-password"
+                      : FIELDS[key].autoComplete
+                  }
+                  value={form[key]}
+                  onChange={handleChange(key)}
                 />
+              ))}
+
+              {/* Extra information for this tab (if any) */}
+              {mode.info && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3.5 py-3 text-sm text-blue-200">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{mode.info}</p>
+                </div>
               )}
-
-              <Field
-                id="auth-email"
-                label="Email address"
-                icon={Mail}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                autoComplete="email"
-              />
-
-              <Field
-                id="auth-password"
-                label="Password"
-                icon={Lock}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                autoComplete={authMode === "login" ? "current-password" : "new-password"}
-              />
 
               <div aria-live="polite">
                 <Notice notice={notice} />
@@ -327,7 +422,7 @@ function AuthPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1422] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1422] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
                   <>
@@ -335,12 +430,15 @@ function AuthPage() {
                     Please wait...
                   </>
                 ) : (
-                  mode.button
+                  <>
+                    {mode.button}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </>
                 )}
               </button>
             </form>
 
-            {/* Doosre tab par jane ka link */}
+            {/* Switch between sign in and register */}
             <p className="mt-6 text-center text-sm text-slate-500">
               {authMode === "login" ? (
                 <>

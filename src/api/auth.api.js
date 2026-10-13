@@ -10,13 +10,14 @@ const api = axios.create({
     withCredentials: true,
 });
 
-export const registerUser = async (name, email, password, role) => {
+export const registerUser = async (name, email, password, role, managerId) => {
     try {
         const response = await api.post("/register", {
             name,
             email,
             password,
-            role
+            role,
+            managerId
         });
         return response.data;
     } catch (error) {
@@ -48,6 +49,15 @@ export const getCurrentUser = async () => {
 export const getAllUsers = async () => {
     try {
         const res = await api.get("/users");
+        return res.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
+export const getMyWorkers = async () => {
+    try {
+        const res = await api.get("/my-workers");
         return res.data;
     } catch (error) {
         throw error.response?.data || error;
