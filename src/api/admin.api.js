@@ -32,3 +32,24 @@ export const updateProfileByAdmin = async (userId, name, email, phone, hourlyRat
         throw error.response?.data || error;
     }
 }
+
+export const getManagerRequests = async () => {
+    try {
+        const response = await api.get('/manager-requests');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
+export const updateRequestStatus = async (requestId, status) => {
+    console.log("Updating request status:", requestId, status);
+    try {
+        const response = await api.put(`/update-manager-request/${requestId}`,{
+            status
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}

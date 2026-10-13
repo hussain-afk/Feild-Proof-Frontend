@@ -8,7 +8,7 @@ import { getCurrentUser, getAllUsers } from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
 import { getVerificationStatusAPI } from "../api/verification.api.js";
-import { getAdminInfos } from "../api/admin.api.js";
+import { getAdminInfos, getManagerRequests } from "../api/admin.api.js";
 import { socket } from "../services/socket.js";
 
 import Modal from "../ui/Modal.jsx";
@@ -40,6 +40,8 @@ const ContextProvider = ({ children }) => {
   const [adminInfos, setAdminInfos] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [verificationStatus, setVerificationStatus] = useState([]);
+  const [managerRequests, setManagerRequests] = useState([]);
+  // console.log("managerRequests", managerRequests);
 
   // Only controls the "verify your email" warning modal
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
@@ -82,6 +84,8 @@ const ContextProvider = ({ children }) => {
     if (role === "admin") {
       const infos = await getAdminInfos();
       const allUsersList = await getAllUsers();
+      const managerRequestsList = await getManagerRequests();
+      setManagerRequests(managerRequestsList || []);
       setAllUsers(allUsersList || []);
       setAdminInfos(infos || []);
     }
@@ -260,10 +264,17 @@ const ContextProvider = ({ children }) => {
     };
 
     // ---- Targeted refetch: reload ONLY the one thing that changed ----
-    let timer;
-    const debounce = (fn) => () => {
-      clearTimeout(timer);
-      timer = setTimeout(fn, 500); // many events in a row become 1 request
+    // Har debounced function ka APNA timer hota hai.
+    // (Pehle ek hi timer sab ke liye tha, to do events kuch der ke andar aate the
+    //  to doosra pehle wale ka reload cancel kar deta tha.)
+    const debounce = (fn) => {
+      let t;
+      const run = () => {
+        clearTimeout(t);
+        t = setTimeout(fn, 500); // many events in a row become 1 request
+      };
+      run.cancel = () => clearTimeout(t);
+      return run;
     };
 
     const reloadVerifications = debounce(async () => {
@@ -274,9 +285,13 @@ const ContextProvider = ({ children }) => {
       }
     });
 
-    const reloadAdminInfos = debounce(async () => {
+    // Admin dashboard: admin log aur manager requests dono ek saath reload hote hain.
+    // Is tarah "admin_info_updated" ya "manager_requests_updated", jo bhi aaye, dono lists update ho jati hain.
+    const reloadAdminData = debounce(async () => {
       try {
-        setAdminInfos((await getAdminInfos()) || []);
+        const [infos, requests] = await Promise.all([getAdminInfos(), getManagerRequests()]);
+        setAdminInfos(infos || []);
+        setManagerRequests(requests || []);
       } catch (e) {
         console.error(e);
       }
@@ -288,8 +303,8 @@ const ContextProvider = ({ children }) => {
     if (socket.connected) handleConnect();
 
     // Dev only: prints every socket event in the browser console (for debugging)
-    const logEvent = (event, ...args) => console.log("[socket]", event, args);
-    if (import.meta.env?.DEV) socket.onAny(logEvent);
+    // const logEvent = (event, ...args) => console.log("[socket]", event, args);
+    // if (import.meta.env?.DEV) socket.onAny(logEvent);
 
     socket.on("new_task_assigned", handleNewTask);
     socket.on("new_notification", handleNotification);
@@ -309,16 +324,18 @@ const ContextProvider = ({ children }) => {
     if (user.role === "manager") {
       socket.on("verification_updated", reloadVerifications);
     }
-    // Admin: a new activity log row was saved
+    // Admin: a new activity log row was saved, or a manager request changed
     if (user.role === "admin") {
-      socket.on("admin_info_updated", reloadAdminInfos);
+      socket.on("admin_info_updated", reloadAdminData);
+      socket.on("manager_requests_updated", reloadAdminData);
     }
 
     // ---- Cleanup ----
     return () => {
-      clearTimeout(timer);
+      reloadVerifications.cancel();
+      reloadAdminData.cancel();
       clearTimeout(softTimer);
-      socket.offAny(logEvent);
+      // socket.offAny(logEvent);
       socket.off("task_created", handleTaskCreated);
       socket.off("connect", handleConnect);
       socket.off("new_task_assigned", handleNewTask);
@@ -326,7 +343,8 @@ const ContextProvider = ({ children }) => {
       updateEvents.forEach((e) => socket.off(e, handleTaskUpdate));
       deleteEvents.forEach((e) => socket.off(e, handleTaskDelete));
       socket.off("verification_updated", reloadVerifications);
-      socket.off("admin_info_updated", reloadAdminInfos);
+      socket.off("admin_info_updated", reloadAdminData);
+      socket.off("manager_requests_updated", reloadAdminData);
       socket.disconnect();
     };
   }, [user, refresh]);
@@ -367,6 +385,9 @@ const ContextProvider = ({ children }) => {
 
           adminInfos,
           setAdminInfos,
+
+          managerRequests,
+          setManagerRequests,
 
           // Handy for a "Refresh" button
           refresh,

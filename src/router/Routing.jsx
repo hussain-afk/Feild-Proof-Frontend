@@ -13,9 +13,18 @@ import AdminRootLayout from '../ui/admin/AdminRootLayout.jsx'
 import AdminDashboard from '../ui/admin/pages/HomePage.jsx'
 import AdminUsersPage from '../ui/admin/pages/AllUsersPage.jsx'
 import LandingPage from '../ui/LandingPage.jsx'
+import PendingPage from '../ui/pendingManager/Pending.jsx'
+import AllRequests from '../ui/admin/pages/AllRequests.jsx'
 
 const RoleProtectedRoute = ({ children, role, user }) => {
         if (!user || user.role !== role) {
+            return <Navigate to="/auth" replace />;
+        }
+        return children;
+};
+
+const PendingProtectedRoute = ({ children, user }) => {
+        if (!user || user.role !== "pending_manager") {
             return <Navigate to="/auth" replace />;
         }
         return children;
@@ -33,6 +42,7 @@ const Routing = () => {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/pending" element={<PendingProtectedRoute user={user}><PendingPage /></PendingProtectedRoute>} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><WorkerRootLayout /></RoleProtectedRoute>} >
                 <Route index element={<WorkerDashboard />} />
@@ -46,6 +56,7 @@ const Routing = () => {
             <Route path="/admin" element={<AdminProtectedRoute user={user}><AdminRootLayout /></AdminProtectedRoute>} >
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsersPage />} />
+                <Route path="requests" element={<AllRequests />} />
                 <Route path="me/:id" element={<AdminProtectedRoute user={user}><ProfilePage /></AdminProtectedRoute>} />
             </Route>
         </Routes>

@@ -51,6 +51,7 @@ function AdminSidebar() {
   const navItems = [
     { id: "overview", label: "Overview", path: "/admin", icon: LayoutDashboard, end: true },
     { id: "users", label: "Users", path: "/admin/users", icon: Users, end: false },
+    { id: "requests", label: "Manager Requests", path: "/admin/requests", icon: Users, end: false },
     { id: "profile", label: "Profile", path: `/admin/me/${user?._id}`, icon: UserCircle, end: false },
   ];
 

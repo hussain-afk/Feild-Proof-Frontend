@@ -8,10 +8,10 @@ const useAuth = () => {
     const { setUser, setIsLoading } = useContext(context)
     const navigate = useNavigate()
 
-    const register = async (name, email, password) => {
+    const register = async (name, email, password, role) => {
         try {
             setIsLoading(true)
-            const response = await registerUser(name, email, password)
+            const response = await registerUser(name, email, password, role)
             // console.log('User registered successfully:', response)
             setUser(response)
             Toast.success('User registered successfully')
@@ -23,6 +23,9 @@ const useAuth = () => {
             }
             if(response.role === 'admin'){
                 navigate('/admin')
+            }
+            if(response.role === 'pending_manager'){
+                navigate('/pending')
             }
         } catch (error) {
             // console.error('Error registering user:', error)
@@ -47,6 +50,9 @@ const useAuth = () => {
             }
             if(response.role === 'admin'){
                 navigate('/admin')
+            }
+            if(response.role === 'pending_manager'){
+                navigate('/pending')
             }
         } catch (error) {
             // console.error('Error logging in user:', error)
