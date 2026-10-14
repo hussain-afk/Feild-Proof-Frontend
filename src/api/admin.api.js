@@ -53,3 +53,12 @@ export const updateRequestStatus = async (requestId, status) => {
         throw error.response?.data || error;
     }
 }
+
+export const banUser = async (userId) => {
+    try {
+        const response = await api.put(`/ban-user/${userId}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}

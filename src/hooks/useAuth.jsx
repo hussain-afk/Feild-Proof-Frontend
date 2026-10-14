@@ -40,8 +40,8 @@ const useAuth = () => {
             setIsLoading(true)
             const response = await loginUser(email, password)
             // console.log('User logged in successfully:', response)
-            setUser(response)
             Toast.success('User logged in successfully')
+            setUser(response)
             if (response.role === 'worker') {
                 navigate('/worker')
             }
@@ -53,6 +53,9 @@ const useAuth = () => {
             }
             if(response.role === 'pending_manager'){
                 navigate('/pending')
+            }
+            if(response.isBanned === true){
+                navigate('/banned')
             }
         } catch (error) {
             // console.error('Error logging in user:', error)

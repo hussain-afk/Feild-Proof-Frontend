@@ -1,4 +1,4 @@
-import { updateProfileByAdmin, updateRequestStatus } from '../api/admin.api.js'
+import { updateProfileByAdmin, updateRequestStatus, banUser } from '../api/admin.api.js'
 import toast from 'react-hot-toast'
 
 const useAdmin = () => {
@@ -23,8 +23,18 @@ const useAdmin = () => {
       console.error('Error updating request status:', error);
     }
   }
+  const handleBanUser = async (userId) => {
+    try {
+      const response = await banUser(userId);
+      toast.success('User banned successfully');
+      return response;
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to ban user');
+      console.error('Error banning user:', error);
+    }
+  }
 
-  return { updateUserProfileByAdmin, updateManagerRequestStatus };
+  return { updateUserProfileByAdmin, updateManagerRequestStatus, handleBanUser };
 
 }
 

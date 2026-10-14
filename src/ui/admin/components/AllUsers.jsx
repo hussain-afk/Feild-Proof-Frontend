@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import {
   Search,
   Pencil,
+  Ban,
   Trash2,
   Users,
   Loader2,
@@ -28,7 +29,14 @@ const ROLE_STYLE = {
   worker: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
 };
 
-// Edit form ki fields. Nayi field chahiye to bas yahan ek line jodo
+// The three number boxes at the top (click one to filter the list)
+const TILES = [
+  { id: "all", label: "All users", icon: Users },
+  { id: "verified", label: "Verified", icon: BadgeCheck },
+  { id: "unverified", label: "Not verified", icon: AlertCircle },
+];
+
+// Fields of the edit form. To add a field, add one line here
 const FORM_FIELDS = [
   { name: "name", label: "Name", type: "text" },
   { name: "email", label: "Email", type: "email" },
@@ -39,6 +47,13 @@ const FORM_FIELDS = [
 const inputClass =
   "h-10 w-full rounded-lg border border-slate-800 bg-[#0b1220] px-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
 
+const badgeClass =
+  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize";
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                              */
+/* ------------------------------------------------------------------ */
+
 const formatDate = (date) =>
   date
     ? new Date(date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
@@ -48,15 +63,24 @@ const formatDate = (date) =>
 const getInitials = (name) =>
   (name || "U")
     .split(" ")
+    .filter(Boolean)
     .slice(0, 2)
     .map((word) => word[0].toUpperCase())
     .join("");
 
+// One filter for the whole list: "all", a role, "verified" or "unverified"
+const matchesFilter = (user, filter) => {
+  if (filter === "all") return true;
+  if (filter === "verified") return Boolean(user.isVerified);
+  if (filter === "unverified") return !user.isVerified;
+  return user.role === filter;
+};
+
 /* ------------------------------------------------------------------ */
-/* Chhote components                                                    */
+/* Small components                                                     */
 /* ------------------------------------------------------------------ */
 
-// User ki photo, ya photo na ho to naam ke pehle akshar
+// The photo of the user, or the first letters of the name
 function Avatar({ user, size = "h-10 w-10" }) {
   if (user.avatar) {
     return (
@@ -67,6 +91,7 @@ function Avatar({ user, size = "h-10 w-10" }) {
       />
     );
   }
+
   return (
     <div
       className={`${size} flex shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-300`}
@@ -76,126 +101,63 @@ function Avatar({ user, size = "h-10 w-10" }) {
   );
 }
 
-// Chhota rangeen label. Role aur verified, dono isi se bante hain
-function Badge({ className, children }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-// Role aur "verified ya nahi" ke labels
+// Role label, verified label, and a red "Banned" label when the user is banned
 function UserBadges({ user }) {
   return (
     <>
-      <Badge className={ROLE_STYLE[user.role] || "border-slate-700 bg-slate-800 text-slate-400"}>
+      <span className={`${badgeClass} ${ROLE_STYLE[user.role] || "border-slate-700 bg-slate-800 text-slate-400"}`}>
         {user.role || "user"}
-      </Badge>
+      </span>
 
       {user.isVerified ? (
-        <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+        <span className={`${badgeClass} border-emerald-500/20 bg-emerald-500/10 text-emerald-400`}>
           <BadgeCheck className="h-3.5 w-3.5" />
           Verified
-        </Badge>
+        </span>
       ) : (
-        <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-400">
+        <span className={`${badgeClass} border-amber-500/20 bg-amber-500/10 text-amber-400`}>
           <AlertCircle className="h-3.5 w-3.5" />
           Not verified
-        </Badge>
+        </span>
+      )}
+
+      {user.isBanned && (
+        <span className={`${badgeClass} border-red-500/30 bg-red-500/10 text-red-400`}>
+          <Ban className="h-3.5 w-3.5" />
+          Banned
+        </span>
       )}
     </>
   );
 }
 
-// Photo, naam aur email ek dabbe me (edit aur delete windows me use hota hai)
-function UserSummary({ user }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0b1220] p-3">
-      <Avatar user={user} size="h-11 w-11" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-        <p className="truncate text-xs text-slate-500">{user.email}</p>
-      </div>
-    </div>
-  );
-}
-
-// Upar ka ginti wala dabba. Dabane par list us hisaab se filter hoti hai
-function StatTile({ label, value, icon: Icon, active, onClick }) {
+// A small round button with an icon (Edit, Ban, Delete)
+function IconButton({ icon: Icon, label, onClick, disabled, hover }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={active}
-      className={`flex items-center justify-between rounded-xl border p-4 text-left transition ${
-        active
-          ? "border-sky-500/50 bg-sky-500/10"
-          : "border-slate-800 bg-[#111827] hover:border-slate-700"
-      }`}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 ${hover}`}
     >
-      <div>
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums text-white">{value}</p>
-      </div>
-      <Icon className="h-5 w-5 text-slate-500" />
+      <Icon className="h-4 w-4" />
     </button>
   );
 }
 
-function ErrorBox({ message }) {
-  return (
-    <div
-      role="alert"
-      className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300"
-    >
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{message}</span>
-    </div>
-  );
-}
+// One row of the list. It does nothing by itself: it only tells the page which user was clicked.
+function UserRow({ user, isSelf, onEdit, onBan, onDelete }) {
+  const details = [
+    [Phone, user.phone || "No phone"],
+    [DollarSign, `${user.hourlyRate ?? 0} per hour`],
+    [CalendarDays, `Joined ${formatDate(user.createdAt)}`],
+  ];
 
-// Windows ke neeche wale do buttons (Cancel aur asli kaam). Edit aur Delete dono isi ko use karte hain
-function ModalActions({ onCancel, onConfirm, busy, busyText, confirmText, confirmClass }) {
-  return (
-    <div className="flex gap-2 border-t border-slate-800 pt-4">
-      <button
-        type="button"
-        onClick={onCancel}
-        disabled={busy}
-        className="h-10 flex-1 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
-      >
-        Cancel
-      </button>
-      <button
-        type={onConfirm ? "button" : "submit"}
-        onClick={onConfirm}
-        disabled={busy}
-        className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
-      >
-        {busy ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {busyText}
-          </>
-        ) : (
-          confirmText
-        )}
-      </button>
-    </div>
-  );
-}
-
-/**
- * Ek user ki ek row. Ye khud kuch edit ya delete nahi karta,
- * sirf parent ko batata hai (onEdit / onDelete) ke kis user par kaam karna hai.
- */
-function UserRow({ user, isSelf, onEdit, onDelete }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 transition-colors hover:bg-white/[0.02] sm:px-6">
-      {/* Photo, naam, email */}
+      {/* Photo, name, email */}
       <div className="flex min-w-0 flex-1 basis-60 items-center gap-3">
         <Avatar user={user} />
         <div className="min-w-0">
@@ -207,49 +169,43 @@ function UserRow({ user, isSelf, onEdit, onDelete }) {
         </div>
       </div>
 
-      {/* Role aur verified */}
+      {/* Role, verified and banned */}
       <div className="flex flex-wrap items-center gap-2">
         <UserBadges user={user} />
       </div>
 
-      {/* Edit aur Delete */}
+      {/* Edit, Ban and Delete */}
       <div className="flex gap-1">
-        <button
-          type="button"
+        <IconButton
+          icon={Pencil}
+          label="Edit user"
           onClick={() => onEdit(user)}
-          title="Edit user"
-          aria-label={`Edit ${user.name}`}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-sky-500/10 hover:text-sky-400"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-
-        <button
-          type="button"
+          hover="hover:bg-sky-500/10 hover:text-sky-400"
+        />
+        <IconButton
+          icon={Ban}
+          label={isSelf ? "You cannot ban your own account" : "Ban user"}
+          onClick={() => onBan(user)}
+          disabled={isSelf}
+          hover="hover:bg-amber-500/10 hover:text-amber-400"
+        />
+        <IconButton
+          icon={Trash2}
+          label={isSelf ? "You cannot delete your own account" : "Delete user"}
           onClick={() => onDelete(user)}
           disabled={isSelf}
-          title={isSelf ? "You cannot delete your own account" : "Delete user"}
-          aria-label={`Delete ${user.name}`}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+          hover="hover:bg-red-500/10 hover:text-red-400"
+        />
       </div>
 
-      {/* Baqi tafseel, naam ke theek neeche */}
+      {/* More details, right under the name */}
       <div className="flex w-full flex-wrap gap-x-6 gap-y-1 text-xs text-slate-400 sm:pl-[52px]">
-        <span className="inline-flex items-center gap-1.5">
-          <Phone className="h-3.5 w-3.5 text-slate-500" />
-          {user.phone || "No phone"}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <DollarSign className="h-3.5 w-3.5 text-slate-500" />
-          {user.hourlyRate ?? 0} per hour
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <CalendarDays className="h-3.5 w-3.5 text-slate-500" />
-          Joined {formatDate(user.createdAt)}
-        </span>
+        {details.map(([Icon, text]) => (
+          <span key={text} className="inline-flex items-center gap-1.5">
+            <Icon className="h-3.5 w-3.5 text-slate-500" />
+            {text}
+          </span>
+        ))}
       </div>
     </li>
   );
@@ -260,51 +216,36 @@ function UserRow({ user, isSelf, onEdit, onDelete }) {
 /* ------------------------------------------------------------------ */
 
 const AllUsers = () => {
-  // allUsers = saare users ki list, currentUser = jo abhi login hai
+  // allUsers = the list of all users, currentUser = the person who is logged in
   const { allUsers = [], setAllUsers, user: currentUser } = useContext(context);
-  const { updateUserProfileByAdmin } = useAdmin();
+  const { updateUserProfileByAdmin, handleBanUser } = useAdmin();
   const { deleteUser } = useAuth();
 
-  // Search aur filters
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all"); // all | admin | manager | worker
-  const [statusFilter, setStatusFilter] = useState("all"); // all | verified | unverified
+  const [filter, setFilter] = useState("all");
 
-  // Edit
-  const [userToEdit, setUserToEdit] = useState(null);
-  const [form, setForm] = useState({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [editError, setEditError] = useState("");
+  // The open window: { type: "edit" | "delete", user }, or null when no window is open
+  const [action, setAction] = useState(null);
+  const [form, setForm] = useState({}); // values of the edit form
+  const [busy, setBusy] = useState(false); // saving or deleting
+  const [error, setError] = useState("");
 
-  // Delete
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
+  const isEdit = action?.type === "edit";
 
-  /* ---------- Ginti aur filter ---------- */
-  const verifiedCount = allUsers.filter((user) => user.isVerified).length;
-  const unverifiedCount = allUsers.length - verifiedCount;
-
-  const countRole = (role) =>
-    role === "all" ? allUsers.length : allUsers.filter((user) => user.role === role).length;
-
+  /* ---------- List ---------- */
   const text = search.trim().toLowerCase();
 
-  const visibleUsers = allUsers.filter((user) => {
-    if (roleFilter !== "all" && user.role !== roleFilter) return false;
-    if (statusFilter === "verified" && !user.isVerified) return false;
-    if (statusFilter === "unverified" && user.isVerified) return false;
-    return `${user.name} ${user.email}`.toLowerCase().includes(text);
-  });
+  const visibleUsers = allUsers.filter(
+    (user) => matchesFilter(user, filter) && `${user.name} ${user.email}`.toLowerCase().includes(text)
+  );
 
-  // Tile dabane par filter lag jata hai, dobara dabane par hat jata hai
-  const toggleStatus = (status) => setStatusFilter(statusFilter === status ? "all" : status);
+  const countFor = (key) => allUsers.filter((user) => matchesFilter(user, key)).length;
 
-  /* ---------- Edit ---------- */
+  /* ---------- Open and close the window ---------- */
   const openEdit = (user) => {
-    setEditError("");
-    setUserToEdit(user);
-    // Form me user ki maujooda values daal do, taake kuch khali na ho jaye
+    setError("");
+    setAction({ type: "edit", user });
+    // Start the form with the current values, so nothing becomes empty by mistake
     setForm({
       name: user.name || "",
       email: user.email || "",
@@ -314,18 +255,37 @@ const AllUsers = () => {
     });
   };
 
-  const closeEdit = () => setUserToEdit(null);
+  const openDelete = (user) => {
+    setError("");
+    setAction({ type: "delete", user });
+  };
+
+  const closeAction = () => setAction(null);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setEditError("");
+  /* ---------- Save and Delete (they share the same steps) ---------- */
+  // Shows "busy", runs the task, closes the window, or shows the error
+  const run = async (task, fallbackMessage) => {
+    setBusy(true);
+    setError("");
 
     try {
+      await task();
+      closeAction();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || fallbackMessage);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSave = (e) => {
+    e.preventDefault();
+
+    run(async () => {
       const updated = await updateUserProfileByAdmin(
-        userToEdit._id, // user ki id
+        action.user._id,
         form.name,
         form.email,
         form.phone,
@@ -333,43 +293,41 @@ const AllUsers = () => {
         form.role
       );
 
-      // Screen par list foran update karo
+      // Update the list on the screen right away
       setAllUsers((users) =>
-        users.map((user) => (user._id === userToEdit._id ? { ...user, ...updated } : user))
+        users.map((user) => (user._id === action.user._id ? { ...user, ...updated } : user))
       );
-      closeEdit();
-    } catch (err) {
-      setEditError(err.response?.data?.message || err.message || "Could not update this user.");
-    } finally {
-      setIsSaving(false);
-    }
+    }, "Could not update this user.");
   };
 
-  /* ---------- Delete ---------- */
-  // Pehle sirf confirm window khulti hai, abhi kuch delete nahi hota
-  const askToDelete = (user) => {
-    setDeleteError("");
-    setUserToDelete(user);
+  const handleDelete = (e) => {
+    e.preventDefault();
+
+    run(async () => {
+      await deleteUser(action.user._id);
+
+      // Remove the user from the list on the screen too
+      setAllUsers((users) => users.filter((user) => user._id !== action.user._id));
+    }, "Could not delete this user.");
   };
 
-  const closeDelete = () => setUserToDelete(null);
+  /* ---------- Ban ---------- */
+  // TODO: write your ban logic here. `user` is the user whose Ban button was clicked.
+  // (The button is already on every row, and it is disabled for your own account.)
+  const handleBan = async (user) => {
+    console.log("Ban clicked for:", user._id);
+    run(async () => {
+      const updated = await handleBanUser(user._id);
 
-  // "Yes, delete" dabane par asli delete
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    setDeleteError("");
-
-    try {
-      await deleteUser(userToDelete._id); // user ki id
-
-      // Screen ki list se bhi hata do
-      setAllUsers((users) => users.filter((user) => user._id !== userToDelete._id));
-      closeDelete();
-    } catch (err) {
-      setDeleteError(err.response?.data?.message || err.message || "Could not delete this user.");
-    } finally {
-      setIsDeleting(false);
-    }
+      // Update the list on the screen right away
+      setAllUsers((users) =>
+        users.map((u) =>
+          u._id === user._id
+            ? { ...u, isBanned: !u.isBanned }
+            : u
+        )
+      );
+    }, "Could not ban this user.");
   };
 
   return (
@@ -382,32 +340,29 @@ const AllUsers = () => {
           </p>
         </header>
 
-        {/* ===== Ginti ke dabbe (dabane par filter lagta hai) ===== */}
+        {/* ===== Number boxes (click one to filter) ===== */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatTile
-            label="All users"
-            value={allUsers.length}
-            icon={Users}
-            active={statusFilter === "all"}
-            onClick={() => setStatusFilter("all")}
-          />
-          <StatTile
-            label="Verified"
-            value={verifiedCount}
-            icon={BadgeCheck}
-            active={statusFilter === "verified"}
-            onClick={() => toggleStatus("verified")}
-          />
-          <StatTile
-            label="Not verified"
-            value={unverifiedCount}
-            icon={AlertCircle}
-            active={statusFilter === "unverified"}
-            onClick={() => toggleStatus("unverified")}
-          />
+          {TILES.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              aria-pressed={filter === id}
+              className={`flex items-center justify-between rounded-xl border p-4 text-left transition ${filter === id
+                ? "border-sky-500/50 bg-sky-500/10"
+                : "border-slate-800 bg-[#111827] hover:border-slate-700"
+                }`}
+            >
+              <div>
+                <p className="text-xs text-slate-400">{label}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-white">{countFor(id)}</p>
+              </div>
+              <Icon className="h-5 w-5 text-slate-500" />
+            </button>
+          ))}
         </div>
 
-        {/* ===== Search aur role ===== */}
+        {/* ===== Search and role ===== */}
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative lg:w-80">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -426,13 +381,12 @@ const AllUsers = () => {
               <button
                 key={role}
                 type="button"
-                onClick={() => setRoleFilter(role)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${
-                  roleFilter === role ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
-                }`}
+                onClick={() => setFilter(role)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${filter === role ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
+                  }`}
               >
                 {role}
-                <span className="text-slate-500">{countRole(role)}</span>
+                <span className="text-slate-500">{countFor(role)}</span>
               </button>
             ))}
           </div>
@@ -448,7 +402,8 @@ const AllUsers = () => {
                   user={user}
                   isSelf={user._id === currentUser?._id}
                   onEdit={openEdit}
-                  onDelete={askToDelete}
+                  onBan={handleBan}
+                  onDelete={openDelete}
                 />
               ))}
             </ul>
@@ -462,87 +417,108 @@ const AllUsers = () => {
         </div>
       </div>
 
-      {/* ================= Edit window ================= */}
-      <Modal isOpen={Boolean(userToEdit)} onClose={closeEdit} title="Update user">
-        {userToEdit && (
-          <form onSubmit={handleSave} className="space-y-4">
-            <UserSummary user={userToEdit} />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <UserBadges user={userToEdit} />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {FORM_FIELDS.map((field) => (
-                <label key={field.name} className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-300">{field.label}</span>
-                  <input
-                    name={field.name}
-                    type={field.type}
-                    value={form[field.name]}
-                    onChange={handleChange}
-                    placeholder={field.placeholder}
-                    min={field.type === "number" ? 0 : undefined}
-                    className={inputClass}
-                  />
-                </label>
-              ))}
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-300">Role</span>
-                <select
-                  name="role"
-                  value={form.role}
-                  onChange={handleChange}
-                  className={`${inputClass} cursor-pointer capitalize`}
-                >
-                  {ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {editError && <ErrorBox message={editError} />}
-
-            <ModalActions
-              onCancel={closeEdit}
-              busy={isSaving}
-              busyText="Saving..."
-              confirmText="Save changes"
-              confirmClass="bg-sky-600 hover:bg-sky-500"
-            />
-          </form>
-        )}
-      </Modal>
-
-      {/* ================= Delete confirm window ================= */}
+      {/* ================= One window for both Edit and Delete ================= */}
       <Modal
-        isOpen={Boolean(userToDelete)}
-        onClose={isDeleting ? () => {} : closeDelete}
-        title="Delete user"
+        isOpen={Boolean(action)}
+        onClose={busy ? () => { } : closeAction}
+        title={isEdit ? "Update user" : "Delete user"}
       >
-        {userToDelete && (
-          <div className="space-y-4">
-            <UserSummary user={userToDelete} />
+        {action && (
+          <form onSubmit={isEdit ? handleSave : handleDelete} className="space-y-4">
+            {/* Who we are working on */}
+            <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#0b1220] p-3">
+              <Avatar user={action.user} size="h-11 w-11" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">{action.user.name}</p>
+                <p className="truncate text-xs text-slate-500">{action.user.email}</p>
+              </div>
+            </div>
 
-            <p className="text-sm leading-relaxed text-slate-300">
-              Are you sure you want to delete this user? This cannot be undone.
-            </p>
+            {isEdit ? (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <UserBadges user={action.user} />
+                </div>
 
-            {deleteError && <ErrorBox message={deleteError} />}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {FORM_FIELDS.map((field) => (
+                    <label key={field.name} className="block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-300">{field.label}</span>
+                      <input
+                        name={field.name}
+                        type={field.type}
+                        value={form[field.name]}
+                        onChange={handleChange}
+                        placeholder={field.placeholder}
+                        min={field.type === "number" ? 0 : undefined}
+                        className={inputClass}
+                      />
+                    </label>
+                  ))}
 
-            <ModalActions
-              onCancel={closeDelete}
-              onConfirm={handleDelete}
-              busy={isDeleting}
-              busyText="Deleting..."
-              confirmText="Yes, delete"
-              confirmClass="bg-red-600 hover:bg-red-500"
-            />
-          </div>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-300">Role</span>
+                    <select
+                      name="role"
+                      value={form.role}
+                      onChange={handleChange}
+                      className={`${inputClass} cursor-pointer capitalize`}
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm leading-relaxed text-slate-300">
+                Are you sure you want to delete this user? This cannot be undone.
+              </p>
+            )}
+
+            {error && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-300"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Cancel and the main button */}
+            <div className="flex gap-2 border-t border-slate-800 pt-4">
+              <button
+                type="button"
+                onClick={closeAction}
+                disabled={busy}
+                className="h-10 flex-1 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={busy}
+                className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${isEdit ? "bg-sky-600 hover:bg-sky-500" : "bg-red-600 hover:bg-red-500"
+                  }`}
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {isEdit ? "Saving..." : "Deleting..."}
+                  </>
+                ) : isEdit ? (
+                  "Save changes"
+                ) : (
+                  "Yes, delete"
+                )}
+              </button>
+            </div>
+          </form>
         )}
       </Modal>
     </div>

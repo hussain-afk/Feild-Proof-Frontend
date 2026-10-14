@@ -190,6 +190,11 @@ const ContextProvider = ({ children }) => {
         setUser(currentUser);
 
         if (!currentUser) return;
+        if (currentUser.isBanned) {
+          // Handle banned user
+          toast.error("Your account has been banned. Please contact support.");
+          navigateRef.current("/banned");
+        }
 
         await fetchRoleData(currentUser.role);
 
@@ -349,7 +354,17 @@ const ContextProvider = ({ children }) => {
     // ---- My own account changed (for example my manager request was approved or rejected) ----
     // The server sends this to the user's room. If it brings the new user data we use it,
     // otherwise we ask the server for the user.
-    const handleUserUpdated = (data = {}) => syncUser(data.user);
+
+    const handleUserUpdated = (data = {}) => {
+      if (data.user?.isBanned) {
+        setUser(data.user);
+        navigateRef.current("/banned");
+        return;
+      }
+
+      syncUser(data.user);
+    };
+
 
     // ---- Targeted refetch: reload ONLY the one thing that changed ----
     // Every debounced function has its OWN timer, so two different events
