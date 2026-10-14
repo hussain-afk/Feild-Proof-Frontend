@@ -15,6 +15,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { context } from "../../../context/context.jsx";
+import LoadingState from "../../LoadingState.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Settings                                                             */
@@ -287,6 +288,15 @@ const Home = () => {
       setRefreshing(false);
     }
   };
+
+  if (isLoading || adminInfos === null) {
+    return (
+      <LoadingState
+        message="Loading activity"
+        subtext="Syncing your workspace"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-white">

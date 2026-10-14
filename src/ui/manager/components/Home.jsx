@@ -7,6 +7,7 @@ import {
   memo,
 } from "react";
 import Modal from "../../Modal";
+import LoadingState from "../../LoadingState.jsx";
 import { context } from "../../../context/context.jsx";
 import useTasks from "../../../hooks/useTasks.jsx";
 import ManagerTaskCard from "./TaskCard.jsx";
@@ -112,6 +113,7 @@ function Home() {
     allTasks = [],
     isCreateTaskModalOpen,
     setIsCreateTaskModalOpen,
+    isLoading,
   } = useContext(context);
 
   const { handleCreateTask } = useTasks();
@@ -260,6 +262,15 @@ function Home() {
   const selectedStatus = STATUS[selectedTask?.status] || STATUS.pending;
   const selectedLoc = selectedTask?.siteLocation;
   const hasCoords = hasCoordinates(selectedLoc);
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading tasks"
+        subtext="Syncing your workspace"
+      />
+    );
+  }
 
   return (
     <>

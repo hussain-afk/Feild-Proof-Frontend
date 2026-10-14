@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { context } from "../../../context/context.jsx";
 import Modal from "../../Modal.jsx";
+import LoadingState from "../../LoadingState.jsx";
 import useAdmin from "../../../hooks/useAdmin.jsx";
 import useAuth from "../../../hooks/useAuth.jsx";
 
@@ -217,7 +218,7 @@ function UserRow({ user, isSelf, onEdit, onBan, onDelete }) {
 
 const AllUsers = () => {
   // allUsers = the list of all users, currentUser = the person who is logged in
-  const { allUsers = [], setAllUsers, user: currentUser } = useContext(context);
+  const { allUsers = [], setAllUsers, user: currentUser, isLoading } = useContext(context);
   const { updateUserProfileByAdmin, handleBanUser } = useAdmin();
   const { deleteUser } = useAuth();
 
@@ -329,6 +330,15 @@ const AllUsers = () => {
       );
     }, "Could not ban this user.");
   };
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading users"
+        subtext="Syncing your workspace"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-white">

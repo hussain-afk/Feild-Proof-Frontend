@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { context } from "../../../context/context.jsx";
+import LoadingState from "../../LoadingState.jsx";
 import useAdmin from "../../../hooks/useAdmin.jsx";
 
 const STATUS = {
@@ -308,6 +309,7 @@ function AllManagerRequests() {
   const {
     managerRequests = [],
     setManagerRequests,
+    isLoading,
   } = useContext(context);
 
   const [search, setSearch] = useState("");
@@ -369,7 +371,7 @@ function AllManagerRequests() {
 
       setManagerRequests((previous) =>
         previous.filter(
-          (request) => (request._id || request.id) !== requestId
+          (request) => String(request._id || request.id) !== String(requestId)
         )
       );
     } catch (error) {
@@ -382,6 +384,15 @@ function AllManagerRequests() {
       setBusy(null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading manager requests"
+        subtext="Syncing your workspace"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-white">

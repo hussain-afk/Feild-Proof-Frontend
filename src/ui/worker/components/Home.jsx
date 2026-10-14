@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Modal from "../../Modal";
+import LoadingState from "../../LoadingState.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -81,7 +82,14 @@ function WorkerDashboard() {
   const { updatePayment } = useAuth();
   const { verifyCheckIn, verifyCheckOut } = useVerification();
   const { handleDeleteNotification } = useNotification();
-  const { myTasks, notifications, user, paymentModalOpen, setPaymentModalOpen } =
+  const {
+    myTasks,
+    notifications,
+    user,
+    paymentModalOpen,
+    setPaymentModalOpen,
+    isLoading,
+  } =
     useContext(context);
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -256,6 +264,15 @@ function WorkerDashboard() {
 
   const handleCheckOut = (id, imageFile) =>
     runWithLocation(id, imageFile, verifyCheckOut, "check out");
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading tasks"
+        subtext="Syncing your workspace"
+      />
+    );
+  }
 
   return (
     <>

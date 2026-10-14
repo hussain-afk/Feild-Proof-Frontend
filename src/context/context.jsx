@@ -22,6 +22,12 @@ export const context = createContext();
 
 const getId = (item) => item?._id || item?.id;
 
+const getPendingManagerRequests = (requests) =>
+  (Array.isArray(requests) ? requests : []).filter(
+    (request) =>
+      String(request?.status || "pending").toLowerCase() === "pending"
+  );
+
 // Add item at the top only if it is not already in the list
 const addIfNew = (list, item) =>
   list.some((x) => getId(x) === getId(item)) ? list : [item, ...list];
@@ -50,7 +56,7 @@ const ContextProvider = ({ children }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
-  const [adminInfos, setAdminInfos] = useState([]);
+  const [adminInfos, setAdminInfos] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [verificationStatus, setVerificationStatus] = useState([]);
   const [managerRequests, setManagerRequests] = useState([]);
@@ -118,7 +124,7 @@ const ContextProvider = ({ children }) => {
       ]);
       setAdminInfos(infos || []);
       setAllUsers(users || []);
-      setManagerRequests(requests || []);
+      setManagerRequests(getPendingManagerRequests(requests));
     }
 
     lastFetchRef.current = Date.now();
@@ -404,7 +410,7 @@ const ContextProvider = ({ children }) => {
       try {
         const [infos, requests] = await Promise.all([getAdminInfos(), getManagerRequests()]);
         setAdminInfos(infos || []);
-        setManagerRequests(requests || []);
+        setManagerRequests(getPendingManagerRequests(requests));
       } catch (e) {
         console.error(e);
       }
