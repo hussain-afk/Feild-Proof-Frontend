@@ -1,22 +1,30 @@
 import { Routes, Route } from 'react-router-dom'
-import {useContext} from 'react'
+import { lazy, Suspense, useContext } from "react";
 import {context} from '../context/context.jsx'
-import AuthPage from '../ui/AuthPage.jsx'
 import { Navigate } from 'react-router-dom'
-import WorkerDashboard from '../ui/worker/pages/HomePage.jsx'
-import ManagerDashboard from '../ui/manager/pages/HomePage.jsx'
-import WorkerRootLayout from '../ui/worker/WorkerRootLayout.jsx'
-import ManagerRootLayout from '../ui/manager/ManagerRootLayout.jsx'
-import VerificationPage from '../ui/manager/pages/VerificationPage.jsx'
-import ProfilePage from '../ui/ProfilePage.jsx'
-import AdminRootLayout from '../ui/admin/AdminRootLayout.jsx'
-import AdminDashboard from '../ui/admin/pages/HomePage.jsx'
-import AdminUsersPage from '../ui/admin/pages/AllUsersPage.jsx'
-import LandingPage from '../ui/LandingPage.jsx'
-import PendingPage from '../ui/pendingManager/Pending.jsx'
-import AllRequests from '../ui/admin/pages/AllRequests.jsx'
-import BannedPage from '../ui/banned/Banned.jsx'
 import useAuth from '../hooks/useAuth.jsx'
+import LoadingState from '../ui/LoadingState.jsx'
+
+// Every page is loaded only when the user opens it (each one becomes its own small file)
+const AuthPage = lazy(() => import('../ui/AuthPage.jsx'))
+const WorkerDashboard = lazy(() => import('../ui/worker/pages/HomePage.jsx'))
+const ManagerDashboard = lazy(() => import('../ui/manager/pages/HomePage.jsx'))
+const WorkerRootLayout = lazy(() => import('../ui/worker/WorkerRootLayout.jsx'))
+const ManagerRootLayout = lazy(() => import('../ui/manager/ManagerRootLayout.jsx'))
+const VerificationPage = lazy(() => import('../ui/manager/pages/VerificationPage.jsx'))
+const ProfilePage = lazy(() => import('../ui/ProfilePage.jsx'))
+const AdminRootLayout = lazy(() => import('../ui/admin/AdminRootLayout.jsx'))
+const AdminDashboard = lazy(() => import('../ui/admin/pages/HomePage.jsx'))
+const AdminUsersPage = lazy(() => import('../ui/admin/pages/AllUsersPage.jsx'))
+const LandingPage = lazy(() => import('../ui/LandingPage.jsx'))
+const PendingPage = lazy(() => import('../ui/pendingManager/Pending.jsx'))
+const AllRequests = lazy(() => import('../ui/admin/pages/AllRequests.jsx'))
+const BannedPage = lazy(() => import('../ui/banned/Banned.jsx'))
+
+// Shows the loading state while the page file is downloading
+const Page = ({ children }) => (
+    <Suspense fallback={<LoadingState />}>{children}</Suspense>
+);
 
 const RoleProtectedRoute = ({ children, role, user }) => {
         if (!user || user.role !== role) {
@@ -51,24 +59,24 @@ const Routing = () => {
     const { logout } = useAuth()
     return (
         <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/banned" element={<BannedProtectedRoute user={user}><BannedPage onLogout={logout} /></BannedProtectedRoute>} />
-            <Route path="/pending" element={<PendingProtectedRoute user={user}><PendingPage /></PendingProtectedRoute>} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><WorkerRootLayout /></RoleProtectedRoute>} >
-                <Route index element={<WorkerDashboard />} />
-                <Route path="me/:id" element={<RoleProtectedRoute user={user} role="worker"><ProfilePage /></RoleProtectedRoute>} />
+            <Route path="/" element={<Page><LandingPage /></Page>} />
+            <Route path="/banned" element={<BannedProtectedRoute user={user}><Page><BannedPage onLogout={logout} /></Page></BannedProtectedRoute>} />
+            <Route path="/pending" element={<PendingProtectedRoute user={user}><Page><PendingPage /></Page></PendingProtectedRoute>} />
+            <Route path="/auth" element={<Page><AuthPage /></Page>} />
+            <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><Page><WorkerRootLayout /></Page></RoleProtectedRoute>} >
+                <Route index element={<Page><WorkerDashboard /></Page>} />
+                <Route path="me/:id" element={<RoleProtectedRoute user={user} role="worker"><Page><ProfilePage /></Page></RoleProtectedRoute>} />
             </Route>
-            <Route path="/manager" element={<RoleProtectedRoute user={user} role="manager"><ManagerRootLayout /></RoleProtectedRoute>} >
-                <Route index element={<ManagerDashboard />} />
-                <Route path="verification" element={<VerificationPage />} />
-                <Route path="me/:id" element={<RoleProtectedRoute user={user} role="manager"><ProfilePage /></RoleProtectedRoute>} />
+            <Route path="/manager" element={<RoleProtectedRoute user={user} role="manager"><Page><ManagerRootLayout /></Page></RoleProtectedRoute>} >
+                <Route index element={<Page><ManagerDashboard /></Page>} />
+                <Route path="verification" element={<Page><VerificationPage /></Page>} />
+                <Route path="me/:id" element={<RoleProtectedRoute user={user} role="manager"><Page><ProfilePage /></Page></RoleProtectedRoute>} />
             </Route>
-            <Route path="/admin" element={<AdminProtectedRoute user={user}><AdminRootLayout /></AdminProtectedRoute>} >
-                <Route index element={<AdminDashboard />} />
-                <Route path="users" element={<AdminUsersPage />} />
-                <Route path="requests" element={<AllRequests />} />
-                <Route path="me/:id" element={<AdminProtectedRoute user={user}><ProfilePage /></AdminProtectedRoute>} />
+            <Route path="/admin" element={<AdminProtectedRoute user={user}><Page><AdminRootLayout /></Page></AdminProtectedRoute>} >
+                <Route index element={<Page><AdminDashboard /></Page>} />
+                <Route path="users" element={<Page><AdminUsersPage /></Page>} />
+                <Route path="requests" element={<Page><AllRequests /></Page>} />
+                <Route path="me/:id" element={<AdminProtectedRoute user={user}><Page><ProfilePage /></Page></AdminProtectedRoute>} />
             </Route>
         </Routes>
     )
