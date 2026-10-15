@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { context } from "../../../context/context.jsx";
 import LoadingState from "../../LoadingState.jsx";
+import DashboardCharts from "./DashboardCharts.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Settings                                                             */
@@ -301,6 +302,8 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-[#0b0f17] text-white">
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        {/* ================= Dashboard Charts ================= */}
+        <DashboardCharts />
         {/* ================= Header ================= */}
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
