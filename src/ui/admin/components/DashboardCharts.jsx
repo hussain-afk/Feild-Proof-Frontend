@@ -212,8 +212,8 @@ function DashboardCharts() {
   const [range, setRange] = useState(14); // how many days the two big charts show
 
   // 1. Always work with arrays (the context can hold null while loading)
-  const users = Array.isArray(allUsers) ? allUsers : [];
-  const activities = Array.isArray(adminInfos) ? adminInfos : [];
+  const users = useMemo(() => (Array.isArray(allUsers) ? allUsers : []), [allUsers]);
+  const activities = useMemo(() => (Array.isArray(adminInfos) ? adminInfos : []), [adminInfos]);
   const pendingRequests = Array.isArray(managerRequests) ? managerRequests.length : 0;
 
   // 2. Turn the lists into chart data (only recalculated when something changes)

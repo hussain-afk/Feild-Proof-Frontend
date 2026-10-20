@@ -13,6 +13,8 @@ import {
   Radio,
   Users,
   ChevronDown,
+  X,
+
 } from "lucide-react";
 
 import useTasks from "../../../hooks/useTasks.jsx";
@@ -48,6 +50,24 @@ function ManagerTaskCard({ task, onViewDetails }) {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
           <CheckCircle2 className="w-3.5 h-3.5" />
           Completed
+        </span>
+      );
+    }
+
+    if (status === "rejected") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px] font-semibold">
+          <X className="w-3.5 h-3.5" />
+          Rejected
+        </span>
+      );
+    }
+
+    if (status === "approved") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Approved
         </span>
       );
     }

@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   ShieldCheck,
+  ClipboardCheck,
   MapPin,
   Camera,
   Radio,
@@ -96,6 +97,16 @@ const PROOF = [
     title: "Accounts you can trust",
     text: "Workers confirm their email with a 6-digit code, and each role only sees its own dashboard.",
   },
+  {
+    icon: ShieldCheck,
+    title: "Managers review the proof",
+    text: "Managers can open submitted check-in and check-out evidence, approve it, or reject it with a required reason.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "A history of every decision",
+    text: "Approved and rejected tasks stay available in a reviewed view, so workers and managers can check what happened later.",
+  },
 ];
 
 const STEPS = [
@@ -127,6 +138,7 @@ const ROLES = {
       "Assign one worker or a whole crew",
       "Watch check-ins and proof photos arrive",
       "Search and filter tasks by status",
+      "Approve or reject submitted proof with a reason",
     ],
     previewTitle: "Today's tasks",
     preview: [
@@ -144,6 +156,7 @@ const ROLES = {
       "Check in and out with a photo",
       "Get a notification the moment a task is assigned",
       "See your own progress on every task",
+      "Review approved and rejected tasks in one place",
     ],
     previewTitle: "My tasks",
     preview: [
@@ -193,6 +206,10 @@ const FAQ = [
   {
     q: "Who can see the activity log?",
     a: "Only admins. Managers and workers see their own tasks and notifications, nothing more.",
+  },
+  {
+    q: "Can a manager reject submitted proof?",
+    a: "Yes. Managers can reject a check-in or check-out submission and must provide a reason. The decision is then available in the reviewed task history.",
   },
   {
     q: "Do I need a Google Maps account?",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   MapPin,
@@ -48,18 +48,19 @@ const formatCoordinate = (value) => {
   return Number.isFinite(number) ? number.toFixed(4) : "N/A";
 };
 
-const BADGE = {
-  completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  checkedOut: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  inProgress: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-};
+// Status badge ka common style (ManagerTaskCard jaisa): chhota dabba, border, icon + text
+const BADGE_STYLE =
+  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-semibold";
 
 const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imageError, setImageError] = useState("");
   const [actionError, setActionError] = useState("");
+
+  // Stops a fast double click: `isProcessing` (state) updates a moment too late,
+  // but a ref changes at once
+  const processingRef = useRef(false);
 
   // -----------------------------
   // STATUS
@@ -70,6 +71,8 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   // task ka status sab ka milakar hota hai. Agar myProgress na ho to purane tareeqe se task.status dekho.
   const myProgress = task?.myProgress;
   const taskDone = task?.status === "completed";
+  const taskRejected = task?.status === "rejected";
+  const taskApproved = task?.status === "approved";
 
   const hasCheckedOut = myProgress ? myProgress === "checked_out" : taskDone;
 
@@ -77,13 +80,64 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
     ? myProgress === "checked_in"
     : task?.status === "in-progress" || task?.status === "in_progress" || Boolean(task?.isCheckedIn);
 
-  const badge = taskDone
-    ? { text: "Completed", className: BADGE.completed }
-    : hasCheckedOut
-      ? { text: "You checked out", className: BADGE.checkedOut }
-      : isCheckedIn
-        ? { text: "Checked in (in progress)", className: BADGE.inProgress }
-        : { text: "Pending check-in", className: BADGE.pending };
+  // The worker can not do anything more when he already checked out,
+  // or when the manager already approved or rejected the task
+  const isLocked = hasCheckedOut || taskApproved || taskRejected;
+
+  // Status badge: icon + text, bilkul ManagerTaskCard ke getStatusBadge jaisa
+  const getStatusBadge = () => {
+    if (taskDone) {
+      return (
+        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Completed
+        </span>
+      );
+    }
+
+    if (taskApproved) {
+      return (
+        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Approved
+        </span>
+      );
+    }
+
+    if (taskRejected) {
+      return (
+        <span className={`${BADGE_STYLE} bg-rose-500/10 border-rose-500/20 text-rose-400`}>
+          <X className="w-3.5 h-3.5" />
+          Rejected
+        </span>
+      );
+    }
+
+    if (hasCheckedOut) {
+      return (
+        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          You checked out
+        </span>
+      );
+    }
+
+    if (isCheckedIn) {
+      return (
+        <span className={`${BADGE_STYLE} bg-blue-500/10 border-blue-500/20 text-blue-400`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+          Checked in
+        </span>
+      );
+    }
+
+    return (
+      <span className={`${BADGE_STYLE} bg-amber-500/10 border-amber-500/20 text-amber-400`}>
+        <AlertCircle className="w-3.5 h-3.5" />
+        Pending check-in
+      </span>
+    );
+  };
 
   // -----------------------------
   // LOCATION
@@ -126,8 +180,9 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   // CHECK IN / CHECK OUT
   // -----------------------------
   const handleActionClick = async () => {
-    if (isProcessing || hasCheckedOut || !imageFile) return;
+    if (processingRef.current || isLocked || !imageFile) return;
 
+    processingRef.current = true;
     setIsProcessing(true);
     setActionError("");
 
@@ -142,13 +197,16 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
       handleRemoveImage();
     } catch (error) {
       // Dashboard ka message (jaise "GPS signal is weak" ya "You are 800m away") card me dikhao
-      setActionError(error?.message || "Something went wrong. Please try again.");
+      setActionError(
+        error?.response?.data?.message || error?.message || "Something went wrong. Please try again."
+      );
     } finally {
+      processingRef.current = false;
       setIsProcessing(false);
     }
   };
 
-  const disabled = isProcessing || hasCheckedOut || !imageFile;
+  const disabled = isProcessing || isLocked || !imageFile;
 
   return (
     <div className="w-full max-w-[520px] overflow-hidden rounded-xl border border-slate-800 bg-[#111827] transition-colors hover:border-slate-700">
@@ -167,11 +225,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
             </p>
           </div>
 
-          <span
-            className={`shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-medium ${badge.className}`}
-          >
-            {badge.text}
-          </span>
+          <div className="shrink-0">{getStatusBadge()}</div>
         </div>
       </div>
 
@@ -206,7 +260,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
               <a
                 href={mapsUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 transition-colors hover:bg-slate-700"
                 title="Open Google Maps"
                 aria-label="Open in Google Maps"
@@ -277,8 +331,8 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
         </div>
       </div>
 
-      {/* ================= IMAGE UPLOAD ================= */}
-      {!hasCheckedOut && (
+      {/* ================= IMAGE UPLOAD (only while the worker can still check in or out) ================= */}
+      {!isLocked && (
         <div className="px-4 pb-3">
           <p className="mb-2 text-xs font-medium text-slate-300">
             {isCheckedIn ? "Completion / check-out proof photo" : "Check-in arrival photo"}
@@ -286,7 +340,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           </p>
 
           {!imageFile ? (
-            <label className="group flex h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-700 bg-[#0b1220] px-3 transition-all hover:border-blue-500/80">
+            <label className="group flex h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-700 bg-[#0b1220] px-3 transition-all hover:border-blue-500/80 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
                   <Camera className="h-4 w-4 text-blue-400" />
@@ -304,11 +358,12 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
                 Choose
               </span>
 
+              {/* sr-only (not hidden) so the keyboard can still reach it */}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="hidden"
+                className="sr-only"
               />
             </label>
           ) : (
@@ -327,7 +382,8 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20"
+                disabled={isProcessing}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50"
                 title="Remove photo"
                 aria-label="Remove photo"
               >
@@ -336,7 +392,11 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
             </div>
           )}
 
-          {imageError && <p className="mt-2 text-xs text-rose-400">{imageError}</p>}
+          {imageError && (
+            <p role="alert" className="mt-2 text-xs text-rose-400">
+              {imageError}
+            </p>
+          )}
         </div>
       )}
 
@@ -347,7 +407,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           onClick={handleActionClick}
           disabled={disabled}
           className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all ${
-            hasCheckedOut
+            isLocked
               ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-500"
               : !imageFile
                 ? "cursor-not-allowed border border-slate-700 bg-slate-800/80 text-slate-500"
@@ -356,7 +416,17 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
                   : "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 active:scale-[0.99]"
           }`}
         >
-          {hasCheckedOut ? (
+          {taskRejected ? (
+            <>
+              <X className="h-4 w-4 text-rose-400" />
+              Task rejected
+            </>
+          ) : taskApproved ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              Task approved
+            </>
+          ) : hasCheckedOut ? (
             <>
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               {taskDone ? "Task completed" : "You have checked out"}
@@ -395,7 +465,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           </div>
         )}
 
-        {!hasCheckedOut && !imageFile && !actionError && (
+        {!isLocked && !imageFile && !actionError && (
           <p className="mt-2 text-center text-[11px] text-amber-400/80">
             Please capture or attach a proof photo first.
           </p>

@@ -318,7 +318,7 @@ const AllUsers = () => {
   const handleBan = async (user) => {
     console.log("Ban clicked for:", user._id);
     run(async () => {
-      const updated = await handleBanUser(user._id);
+      await handleBanUser(user._id);
 
       // Update the list on the screen right away
       setAllUsers((users) =>

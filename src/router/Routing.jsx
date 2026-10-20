@@ -12,6 +12,7 @@ const ManagerDashboard = lazy(() => import('../ui/manager/pages/HomePage.jsx'))
 const WorkerRootLayout = lazy(() => import('../ui/worker/WorkerRootLayout.jsx'))
 const ManagerRootLayout = lazy(() => import('../ui/manager/ManagerRootLayout.jsx'))
 const VerificationPage = lazy(() => import('../ui/manager/pages/VerificationPage.jsx'))
+const ReviewedTasks = lazy(() => import('../ui/ReviewedTasks.jsx'))
 const ProfilePage = lazy(() => import('../ui/ProfilePage.jsx'))
 const AdminRootLayout = lazy(() => import('../ui/admin/AdminRootLayout.jsx'))
 const AdminDashboard = lazy(() => import('../ui/admin/pages/HomePage.jsx'))
@@ -25,6 +26,13 @@ const BannedPage = lazy(() => import('../ui/banned/Banned.jsx'))
 const Page = ({ children }) => (
     <Suspense fallback={<LoadingState />}>{children}</Suspense>
 );
+
+const AuthProtectedRoute = ({ children, user }) => {
+        if (user) {
+            return <Navigate to={`/${user.role}`} replace />;
+        }
+        return children;
+};
 
 const RoleProtectedRoute = ({ children, role, user }) => {
         if (!user || user.role !== role) {
@@ -62,14 +70,16 @@ const Routing = () => {
             <Route path="/" element={<Page><LandingPage /></Page>} />
             <Route path="/banned" element={<BannedProtectedRoute user={user}><Page><BannedPage onLogout={logout} /></Page></BannedProtectedRoute>} />
             <Route path="/pending" element={<PendingProtectedRoute user={user}><Page><PendingPage /></Page></PendingProtectedRoute>} />
-            <Route path="/auth" element={<Page><AuthPage /></Page>} />
+            <Route path="/auth" element={<Page><AuthProtectedRoute><AuthPage /></AuthProtectedRoute></Page>} />
             <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><Page><WorkerRootLayout /></Page></RoleProtectedRoute>} >
                 <Route index element={<Page><WorkerDashboard /></Page>} />
+                <Route path="reviewed" element={<Page><ReviewedTasks /></Page>} />
                 <Route path="me/:id" element={<RoleProtectedRoute user={user} role="worker"><Page><ProfilePage /></Page></RoleProtectedRoute>} />
             </Route>
             <Route path="/manager" element={<RoleProtectedRoute user={user} role="manager"><Page><ManagerRootLayout /></Page></RoleProtectedRoute>} >
                 <Route index element={<Page><ManagerDashboard /></Page>} />
                 <Route path="verification" element={<Page><VerificationPage /></Page>} />
+                <Route path="reviewed" element={<Page><ReviewedTasks /></Page>} />
                 <Route path="me/:id" element={<RoleProtectedRoute user={user} role="manager"><Page><ProfilePage /></Page></RoleProtectedRoute>} />
             </Route>
             <Route path="/admin" element={<AdminProtectedRoute user={user}><Page><AdminRootLayout /></Page></AdminProtectedRoute>} >

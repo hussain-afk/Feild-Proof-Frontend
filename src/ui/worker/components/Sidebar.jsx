@@ -8,6 +8,7 @@ import {
   Menu,
   ShieldCheck,
   X,
+  ClipboardCheck,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -51,6 +52,7 @@ function WorkerSidebar() {
     { id: "tasks", label: "My tasks", path: "/worker", icon: CheckSquare, end: true },
     // { id: "history", label: "Work history", path: "/worker/history", icon: Clock, end: false },
     // { id: "earnings", label: "Earnings", path: "/worker/earnings", icon: BarChart3, end: false },
+    { id: "reviewed", label: "Reviewed tasks", path: "/worker/reviewed", icon: ClipboardCheck, end: false },
     { id: "profile", label: "Profile", path: `/worker/me/${user?._id}`, icon: UserCircle, end: false },
   ];
 

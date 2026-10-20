@@ -5,20 +5,22 @@ import { ShieldCheck, Inbox } from "lucide-react";
 import useVerification from "../../../hooks/useVerification";
 
 function VerificationPage() {
-  const { deleteVerification } = useVerification();
+  const { deleteVerification, onApprove, onReject } = useVerification();
   const { verificationStatus } = useContext(context);
   // console.log("verificationStatus in VerificationPage:", verificationStatus);
 
   // Manager Approve Handler
-  const handleApprove = (record) => {
+  const handleApprove = async (record) => {
     console.log("Approve Verification ID:", record._id);
     // API Call: await api.post(`/verify/approve/${record._id}`);
+    await onApprove(record._id);
   };
 
   // Manager Reject Handler
-  const handleReject = (record) => {
-    console.log("Reject Verification ID:", record._id);
+  const handleReject = async (record, reason) => {
+    console.log("Reject Verification ID:", record._id, "Reason:", reason);
     // API Call: await api.post(`/verify/reject/${record._id}`);
+    await onReject(record._id, reason);
   };
   // Manager Delete Handler
   const handleDeleteVerification = async (record) => {

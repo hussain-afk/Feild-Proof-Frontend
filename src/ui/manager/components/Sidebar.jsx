@@ -50,6 +50,7 @@ function ManagerSidebar() {
 
   const navItems = [
     { id: "tasks", label: "Field tasks", path: "/manager", icon: ListTodo, end: true },
+    { id: "reviewed", label: "Reviewed tasks", path: "/manager/reviewed", icon: ClipboardCheck, end: false },
     { id: "verification", label: "Verification", path: "/manager/verification", icon: ClipboardCheck, end: false },
     { id: "profile", label: "Profile", path: `/manager/me/${user?._id}`, icon: UserCircle, end: false },
   ];

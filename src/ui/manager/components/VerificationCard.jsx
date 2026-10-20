@@ -1,4 +1,4 @@
-
+import { useState } from "react";
 import {
   User,
   MapPin,
@@ -11,19 +11,35 @@ import {
   Camera,
   Compass,
   Trash2,
+  Loader2,
 } from "lucide-react";
+
+const MAX_REASON_LENGTH = 300;
+
+// GPS values can come as numbers or as text: show them safely with 4 digits
+const formatCoordinates = (point) => {
+  const latitude = Number(point?.latitude);
+  const longitude = Number(point?.longitude);
+
+  if (!point || Number.isNaN(latitude) || Number.isNaN(longitude)) return "N/A";
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+};
 
 const VerificationCard = ({
   verificationData,
   onApprove,
-  onReject,
+  onReject, // called like this: onReject(verification, reason)
   onDeleteVerification,
 }) => {
+  /* ---------- Reject form ---------- */
+  const [isRejecting, setIsRejecting] = useState(false); // is the reason box open?
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   const data = Array.isArray(verificationData)
     ? verificationData[0]
     : verificationData;
-
-    console.log(data, "verification data in verification card");
 
   if (!data) {
     return (
@@ -80,6 +96,41 @@ const VerificationCard = ({
     if (!imageUrl) return;
 
     window.open(imageUrl, "_blank", "noopener,noreferrer");
+  };
+
+  /* ---------- Reject: open, close and send ---------- */
+  const openRejectForm = () => {
+    setReasonError("");
+    setIsRejecting(true);
+  };
+
+  const closeRejectForm = () => {
+    setIsRejecting(false);
+    setReason("");
+    setReasonError("");
+  };
+
+  const handleRejectSubmit = async (event) => {
+    event.preventDefault();
+
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+      setReasonError("Please write the reason for rejecting.");
+      return;
+    }
+
+    setSubmitting(true);
+    setReasonError("");
+
+    try {
+      // The reason goes to your reject function as the second value
+      await (onReject && onReject(data, cleanReason));
+      closeRejectForm();
+    } catch (error) {
+      setReasonError(error?.response?.data?.message || error?.message || "Could not reject. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -142,7 +193,7 @@ const VerificationCard = ({
         {/* Worker Info */}
         <div className="flex items-center gap-3 border-b border-slate-800/70 px-4 py-2.5 sm:border-b-0 sm:border-r">
 
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/50">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/50">
             {
               worker?.avatar ? (
                 <img
@@ -227,9 +278,7 @@ const VerificationCard = ({
               </span>
 
               <span className="truncate text-slate-300">
-                {checkIn?.latitude
-                  ? `${checkIn.latitude.toFixed(4)}, ${checkIn.longitude.toFixed(4)}`
-                  : "N/A"}
+                {formatCoordinates(checkIn)}
               </span>
 
             </div>
@@ -306,9 +355,7 @@ const VerificationCard = ({
               </span>
 
               <span className="truncate text-slate-300">
-                {checkOut?.latitude
-                  ? `${checkOut.latitude.toFixed(4)}, ${checkOut.longitude.toFixed(4)}`
-                  : "N/A"}
+                {formatCoordinates(checkOut)}
               </span>
 
             </div>
@@ -381,39 +428,105 @@ const VerificationCard = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2.5">
+        {isRejecting ? (
+          /* ---------- Reason box: the reason is required ---------- */
+          <form onSubmit={handleRejectSubmit} className="space-y-2.5">
+            <label
+              htmlFor={`reject-reason-${_id}`}
+              className="block text-[11px] font-semibold text-slate-300"
+            >
+              Reason for rejection <span className="text-rose-400">*</span>
+            </label>
 
-          {/* Reject */}
-          <button
-            type="button"
-            onClick={() => onReject && onReject(data)}
-            disabled={!isEligibleForReview}
-            className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-all ${
-              !isEligibleForReview
-                ? "cursor-not-allowed border-slate-800 bg-slate-800/40 text-slate-600"
-                : "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 active:scale-[0.99]"
-            }`}
-          >
-            <XCircle className="h-4 w-4" />
-            Reject Verification
-          </button>
+            <textarea
+              id={`reject-reason-${_id}`}
+              required
+              autoFocus
+              rows={3}
+              maxLength={MAX_REASON_LENGTH}
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                setReasonError("");
+              }}
+              placeholder="Why are you rejecting this verification?"
+              className="w-full resize-none rounded-lg border border-slate-700 bg-[#080d1a] px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-600 transition focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20"
+            />
 
-          {/* Approve */}
-          <button
-            type="button"
-            onClick={() => onApprove && onApprove(data)}
-            disabled={!isEligibleForReview}
-            className={`flex h-9 items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-all ${
-              !isEligibleForReview
-                ? "cursor-not-allowed bg-slate-800/40 text-slate-600"
-                : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
-            }`}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Approve Verification
-          </button>
+            {reasonError && (
+              <p role="alert" className="flex items-center gap-1.5 text-[11px] text-rose-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {reasonError}
+              </p>
+            )}
 
-        </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Cancel */}
+              <button
+                type="button"
+                onClick={closeRejectForm}
+                disabled={submitting}
+                className="flex h-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-xs font-bold text-slate-300 transition-all hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              {/* Confirm reject */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-rose-600 text-xs font-bold text-white transition-all hover:bg-rose-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Rejecting...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4" />
+                    Confirm Reject
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* ---------- The two main buttons ---------- */
+          <div className="grid grid-cols-2 gap-2.5">
+
+            {/* Reject: opens the reason box */}
+            <button
+              type="button"
+              onClick={openRejectForm}
+              disabled={!isEligibleForReview}
+              className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-all ${
+                !isEligibleForReview
+                  ? "cursor-not-allowed border-slate-800 bg-slate-800/40 text-slate-600"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 active:scale-[0.99]"
+              }`}
+            >
+              <XCircle className="h-4 w-4" />
+              Reject Verification
+            </button>
+
+            {/* Approve */}
+            <button
+              type="button"
+              onClick={() => onApprove && onApprove(data)}
+              disabled={!isEligibleForReview}
+              className={`flex h-9 items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-all ${
+                !isEligibleForReview
+                  ? "cursor-not-allowed bg-slate-800/40 text-slate-600"
+                  : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
+              }`}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Approve Verification
+            </button>
+
+          </div>
+        )}
       </div>
 
     </div>

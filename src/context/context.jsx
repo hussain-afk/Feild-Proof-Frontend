@@ -7,7 +7,7 @@ import { MailWarning } from "lucide-react";
 import { getCurrentUser, getAllUsers, getMyWorkers } from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
-import { getVerificationStatusAPI } from "../api/verification.api.js";
+import { getVerificationStatusAPI, getMyApprovedTasks, getMyRejectedTasks } from "../api/verification.api.js";
 import { getAdminInfos, getManagerRequests } from "../api/admin.api.js";
 import { socket } from "../services/socket.js";
 
@@ -61,6 +61,11 @@ const ContextProvider = ({ children }) => {
   const [verificationStatus, setVerificationStatus] = useState([]);
   const [managerRequests, setManagerRequests] = useState([]);
   const [myWorkers, setMyWorkers] = useState([]); // the workers of this manager
+  const [myApprovedTasks, setMyApprovedTasks] = useState([]); // the tasks approved by this manager
+  const [myRejectedTasks, setMyRejectedTasks] = useState([]); // the tasks rejected by this manager
+
+  console.log("ContextProvider: myApprovedTasks", myApprovedTasks);
+  console.log("ContextProvider: myRejectedTasks", myRejectedTasks);
 
   // Only controls the "verify your email" warning modal
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
@@ -98,22 +103,33 @@ const ContextProvider = ({ children }) => {
   const fetchRoleData = useCallback(async (userRole) => {
     if (userRole === "manager") {
       // Promise.all runs the requests together instead of one by one
-      const [users, tasks, verifications, workers] = await Promise.all([
+      const [users, tasks, verifications, workers, approved, rejected] = await Promise.all([
         getAllUsers(),
         getAllTasks(),
         getVerificationStatusAPI(),
         getMyWorkers(),
+        getMyApprovedTasks(),
+        getMyRejectedTasks(),
       ]);
       setAllUsers(users || []);
       setAllTasks(tasks || []);
       setVerificationStatus(verifications || []);
       setMyWorkers(workers || []);
+      setMyApprovedTasks(approved || []);
+      setMyRejectedTasks(rejected || []);
     }
 
     if (userRole === "worker") {
-      const [tasks, list] = await Promise.all([getMyTasks(), getNotifications()]);
+      const [tasks, list, approved, rejected] = await Promise.all([
+        getMyTasks(),
+        getNotifications(),
+        getMyApprovedTasks(),
+        getMyRejectedTasks()
+      ]);
       setMyTasks(tasks || []);
       setNotifications(list || []);
+      setMyApprovedTasks(approved || []);
+      setMyRejectedTasks(rejected || []);
     }
 
     if (userRole === "admin") {
@@ -239,6 +255,8 @@ const ContextProvider = ({ children }) => {
       setVerificationStatus([]);
       setManagerRequests([]);
       setMyWorkers([]);
+      setMyApprovedTasks([]);
+      setMyRejectedTasks([]);
     }
     prevUserIdRef.current = userId || null;
   }, [userId]);
@@ -385,9 +403,33 @@ const ContextProvider = ({ children }) => {
       return run;
     };
 
-    const reloadVerifications = debounce(async () => {
+    // A check-in, check-out, approve or reject happened ("verification_updated").
+    // Manager and worker both reload the lists that depend on it:
+    //   manager -> verification cards, approved tasks, rejected tasks
+    //   worker  -> my tasks (card status), approved tasks, rejected tasks
+    const reloadReviews = debounce(async () => {
       try {
-        setVerificationStatus((await getVerificationStatusAPI()) || []);
+        if (role === "manager") {
+          const [verifications, approved, rejected] = await Promise.all([
+            getVerificationStatusAPI(),
+            getMyApprovedTasks(),
+            getMyRejectedTasks(),
+          ]);
+          setVerificationStatus(verifications || []);
+          setMyApprovedTasks(approved || []);
+          setMyRejectedTasks(rejected || []);
+        }
+
+        if (role === "worker") {
+          const [tasks, approved, rejected] = await Promise.all([
+            getMyTasks(),
+            getMyApprovedTasks(),
+            getMyRejectedTasks(),
+          ]);
+          setMyTasks(tasks || []);
+          setMyApprovedTasks(approved || []);
+          setMyRejectedTasks(rejected || []);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -436,10 +478,14 @@ const ContextProvider = ({ children }) => {
     updateEvents.forEach((e) => socket.on(e, handleTaskUpdate));
     deleteEvents.forEach((e) => socket.on(e, handleTaskDelete));
 
-    // Manager: a worker checked in/out or proof changed, or my workers list changed
+    // Manager: a worker checked in/out, a visit was approved or rejected, or my workers list changed
     if (role === "manager") {
-      socket.on("verification_updated", reloadVerifications);
+      socket.on("verification_updated", reloadReviews);
       socket.on("my_workers_updated", reloadMyWorkers);
+    }
+    // Worker: my visit was approved or rejected (or my check-in/out was saved)
+    if (role === "worker") {
+      socket.on("verification_updated", reloadReviews);
     }
     // Admin: a new activity log row was saved, or a manager request changed
     if (role === "admin") {
@@ -449,7 +495,7 @@ const ContextProvider = ({ children }) => {
 
     // ---- Cleanup ----
     return () => {
-      reloadVerifications.cancel();
+      reloadReviews.cancel();
       reloadMyWorkers.cancel();
       reloadAdminData.cancel();
       clearTimeout(softTimer);
@@ -461,7 +507,7 @@ const ContextProvider = ({ children }) => {
       socket.off("user_updated", handleUserUpdated);
       updateEvents.forEach((e) => socket.off(e, handleTaskUpdate));
       deleteEvents.forEach((e) => socket.off(e, handleTaskDelete));
-      socket.off("verification_updated", reloadVerifications);
+      socket.off("verification_updated", reloadReviews);
       socket.off("my_workers_updated", reloadMyWorkers);
       socket.off("admin_info_updated", reloadAdminData);
       socket.off("manager_requests_updated", reloadAdminData);
@@ -511,6 +557,12 @@ const ContextProvider = ({ children }) => {
 
           myWorkers,
           setMyWorkers,
+
+          myApprovedTasks,
+          setMyApprovedTasks,
+
+          myRejectedTasks,
+          setMyRejectedTasks,
 
           // Handy for a "Refresh" button
           refresh,
