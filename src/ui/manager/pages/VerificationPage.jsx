@@ -3,10 +3,11 @@ import VerificationCard from "../components/VerificationCard";
 import { context } from "../../../context/context";
 import { ShieldCheck, Inbox } from "lucide-react";
 import useVerification from "../../../hooks/useVerification";
+import LoadingState from "../../LoadingState.jsx";
 
 function VerificationPage() {
   const { deleteVerification, onApprove, onReject } = useVerification();
-  const { verificationStatus } = useContext(context);
+  const { verificationStatus, isLoading } = useContext(context);
   // console.log("verificationStatus in VerificationPage:", verificationStatus);
 
   // Manager Approve Handler
@@ -27,6 +28,15 @@ function VerificationPage() {
     console.log("Delete Verification ID:", record._id);
     // API Call: await api.delete(`/verify/${record._id}`);
     await deleteVerification(record._id);
+  }
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading verifications"
+        subtext="Syncing worker submissions"
+      />
+    );
   }
 
   return (

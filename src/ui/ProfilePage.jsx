@@ -3,6 +3,7 @@ import { context } from "../context/context.jsx";
 import { useParams } from "react-router-dom";
 import useAuth from "../hooks/useAuth.jsx";
 import VerifyEmailModal from "./VerifyEmailModal.jsx";
+import LoadingState from "./LoadingState.jsx";
 import {
   dismissPendingVerification,
   getPendingVerification,
@@ -47,7 +48,7 @@ const fromUser = (user) => ({
 
 const ProfilePage = () => {
   const { updateProfile } = useAuth();
-  const { user, setUser } = useContext(context);
+  const { user, setUser, isLoading } = useContext(context);
   const { id } = useParams();
   const userId = id || user?._id;
 
@@ -189,6 +190,15 @@ const ProfilePage = () => {
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : null;
+
+  if (isLoading || !user) {
+    return (
+      <LoadingState
+        message="Loading profile"
+        subtext="Preparing your account settings"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-slate-100">

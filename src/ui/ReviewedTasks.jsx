@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { Search, X, ArrowDownUp, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
 import { context } from "../context/context.jsx";
+import LoadingState from "./LoadingState.jsx";
 
 /**
  * ONE page for approved AND rejected tasks.
@@ -101,7 +102,7 @@ function StatusBadge({ kind, className = "" }) {
 /* ------------------------------------------------------------------ */
 
 function ReviewedTasks() {
-  const { myApprovedTasks, myRejectedTasks } = useContext(context);
+  const { myApprovedTasks, myRejectedTasks, isLoading } = useContext(context);
 
   const [filter, setFilter] = useState("all"); // all | approved | rejected
   const [search, setSearch] = useState("");
@@ -142,6 +143,15 @@ function ReviewedTasks() {
   };
 
   const toggleMessage = (id) => setOpenId(openId === id ? null : id);
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading reviewed tasks"
+        subtext="Syncing your review history"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-white">

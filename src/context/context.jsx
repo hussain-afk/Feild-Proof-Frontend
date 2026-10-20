@@ -403,33 +403,9 @@ const ContextProvider = ({ children }) => {
       return run;
     };
 
-    // A check-in, check-out, approve or reject happened ("verification_updated").
-    // Manager and worker both reload the lists that depend on it:
-    //   manager -> verification cards, approved tasks, rejected tasks
-    //   worker  -> my tasks (card status), approved tasks, rejected tasks
-    const reloadReviews = debounce(async () => {
+    const reloadVerifications = debounce(async () => {
       try {
-        if (role === "manager") {
-          const [verifications, approved, rejected] = await Promise.all([
-            getVerificationStatusAPI(),
-            getMyApprovedTasks(),
-            getMyRejectedTasks(),
-          ]);
-          setVerificationStatus(verifications || []);
-          setMyApprovedTasks(approved || []);
-          setMyRejectedTasks(rejected || []);
-        }
-
-        if (role === "worker") {
-          const [tasks, approved, rejected] = await Promise.all([
-            getMyTasks(),
-            getMyApprovedTasks(),
-            getMyRejectedTasks(),
-          ]);
-          setMyTasks(tasks || []);
-          setMyApprovedTasks(approved || []);
-          setMyRejectedTasks(rejected || []);
-        }
+        setVerificationStatus((await getVerificationStatusAPI()) || []);
       } catch (e) {
         console.error(e);
       }
@@ -478,14 +454,10 @@ const ContextProvider = ({ children }) => {
     updateEvents.forEach((e) => socket.on(e, handleTaskUpdate));
     deleteEvents.forEach((e) => socket.on(e, handleTaskDelete));
 
-    // Manager: a worker checked in/out, a visit was approved or rejected, or my workers list changed
+    // Manager: a worker checked in/out or proof changed, or my workers list changed
     if (role === "manager") {
-      socket.on("verification_updated", reloadReviews);
+      socket.on("verification_updated", reloadVerifications);
       socket.on("my_workers_updated", reloadMyWorkers);
-    }
-    // Worker: my visit was approved or rejected (or my check-in/out was saved)
-    if (role === "worker") {
-      socket.on("verification_updated", reloadReviews);
     }
     // Admin: a new activity log row was saved, or a manager request changed
     if (role === "admin") {
@@ -495,7 +467,7 @@ const ContextProvider = ({ children }) => {
 
     // ---- Cleanup ----
     return () => {
-      reloadReviews.cancel();
+      reloadVerifications.cancel();
       reloadMyWorkers.cancel();
       reloadAdminData.cancel();
       clearTimeout(softTimer);
@@ -507,7 +479,7 @@ const ContextProvider = ({ children }) => {
       socket.off("user_updated", handleUserUpdated);
       updateEvents.forEach((e) => socket.off(e, handleTaskUpdate));
       deleteEvents.forEach((e) => socket.off(e, handleTaskDelete));
-      socket.off("verification_updated", reloadReviews);
+      socket.off("verification_updated", reloadVerifications);
       socket.off("my_workers_updated", reloadMyWorkers);
       socket.off("admin_info_updated", reloadAdminData);
       socket.off("manager_requests_updated", reloadAdminData);
