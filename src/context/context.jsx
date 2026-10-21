@@ -53,7 +53,7 @@ const ContextProvider = ({ children }) => {
   // STATES
   // =========================
   const [user, setUser] = useState(null);
-  const [allUsers, setAllUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // only the admin loads this list now
   const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [adminInfos, setAdminInfos] = useState(null);
@@ -61,11 +61,8 @@ const ContextProvider = ({ children }) => {
   const [verificationStatus, setVerificationStatus] = useState([]);
   const [managerRequests, setManagerRequests] = useState([]);
   const [myWorkers, setMyWorkers] = useState([]); // the workers of this manager
-  const [myApprovedTasks, setMyApprovedTasks] = useState([]); // the tasks approved by this manager
-  const [myRejectedTasks, setMyRejectedTasks] = useState([]); // the tasks rejected by this manager
-
-  console.log("ContextProvider: myApprovedTasks", myApprovedTasks);
-  console.log("ContextProvider: myRejectedTasks", myRejectedTasks);
+  const [myApprovedTasks, setMyApprovedTasks] = useState([]); // approved tasks (manager and worker)
+  const [myRejectedTasks, setMyRejectedTasks] = useState([]); // rejected tasks (manager and worker)
 
   // Only controls the "verify your email" warning modal
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
@@ -96,55 +93,72 @@ const ContextProvider = ({ children }) => {
   }, [role]);
 
   // =========================
+  // APPROVED + REJECTED TASKS (manager and worker)
+  // This function NEVER throws. If one of the two requests fails, the other list
+  // still loads, and the rest of the dashboard data is not affected.
+  // =========================
+  const fetchReviewedTasks = useCallback(async () => {
+    const [approved, rejected] = await Promise.allSettled([
+      getMyApprovedTasks(),
+      getMyRejectedTasks(),
+    ]);
+
+    if (approved.status === "fulfilled") setMyApprovedTasks(approved.value || []);
+    else console.error("Could not load approved tasks:", approved.reason);
+
+    if (rejected.status === "fulfilled") setMyRejectedTasks(rejected.value || []);
+    else console.error("Could not load rejected tasks:", rejected.reason);
+  }, []);
+
+  // =========================
   // ONE PLACE TO FETCH DATA FOR EACH ROLE
   // (used by first load, tab focus, socket reconnect and role change)
   // NOTE: this function must NOT open any modal
+  //
+  // IMPORTANT: the names in the [ ... ] on the left must be in the SAME ORDER as the
+  // requests inside Promise.all on the right. If you remove (or add) a request,
+  // remove (or add) its name too. Otherwise every list gets the data of the one before it.
   // =========================
-  const fetchRoleData = useCallback(async (userRole) => {
-    if (userRole === "manager") {
-      // Promise.all runs the requests together instead of one by one
-      const [users, tasks, verifications, workers, approved, rejected] = await Promise.all([
-        getAllUsers(),
-        getAllTasks(),
-        getVerificationStatusAPI(),
-        getMyWorkers(),
-        getMyApprovedTasks(),
-        getMyRejectedTasks(),
-      ]);
-      setAllUsers(users || []);
-      setAllTasks(tasks || []);
-      setVerificationStatus(verifications || []);
-      setMyWorkers(workers || []);
-      setMyApprovedTasks(approved || []);
-      setMyRejectedTasks(rejected || []);
-    }
+  const fetchRoleData = useCallback(
+    async (userRole) => {
+      if (userRole === "manager") {
+        // Promise.all runs the requests together instead of one by one
+        const [tasks, verifications, workers] = await Promise.all([
+          getAllTasks(),
+          getVerificationStatusAPI(),
+          getMyWorkers(),
+          fetchReviewedTasks(), // approved + rejected (sets its own state)
+        ]);
+        setAllTasks(tasks || []);
+        setVerificationStatus(verifications || []);
+        setMyWorkers(workers || []);
+      }
 
-    if (userRole === "worker") {
-      const [tasks, list, approved, rejected] = await Promise.all([
-        getMyTasks(),
-        getNotifications(),
-        getMyApprovedTasks(),
-        getMyRejectedTasks()
-      ]);
-      setMyTasks(tasks || []);
-      setNotifications(list || []);
-      setMyApprovedTasks(approved || []);
-      setMyRejectedTasks(rejected || []);
-    }
+      if (userRole === "worker") {
+        const [tasks, list] = await Promise.all([
+          getMyTasks(),
+          getNotifications(),
+          fetchReviewedTasks(), // approved + rejected (sets its own state)
+        ]);
+        setMyTasks(tasks || []);
+        setNotifications(list || []);
+      }
 
-    if (userRole === "admin") {
-      const [infos, users, requests] = await Promise.all([
-        getAdminInfos(),
-        getAllUsers(),
-        getManagerRequests(),
-      ]);
-      setAdminInfos(infos || []);
-      setAllUsers(users || []);
-      setManagerRequests(getPendingManagerRequests(requests));
-    }
+      if (userRole === "admin") {
+        const [infos, users, requests] = await Promise.all([
+          getAdminInfos(),
+          getAllUsers(),
+          getManagerRequests(),
+        ]);
+        setAdminInfos(infos || []);
+        setAllUsers(users || []);
+        setManagerRequests(getPendingManagerRequests(requests));
+      }
 
-    lastFetchRef.current = Date.now();
-  }, []);
+      lastFetchRef.current = Date.now();
+    },
+    [fetchReviewedTasks]
+  );
 
   // =========================
   // KEEP THE CURRENT USER UP TO DATE
@@ -378,7 +392,6 @@ const ContextProvider = ({ children }) => {
     // ---- My own account changed (for example my manager request was approved or rejected) ----
     // The server sends this to the user's room. If it brings the new user data we use it,
     // otherwise we ask the server for the user.
-
     const handleUserUpdated = (data = {}) => {
       if (data.user?.isBanned) {
         setUser(data.user);
@@ -388,7 +401,6 @@ const ContextProvider = ({ children }) => {
 
       syncUser(data.user);
     };
-
 
     // ---- Targeted refetch: reload ONLY the one thing that changed ----
     // Every debounced function has its OWN timer, so two different events
@@ -542,6 +554,7 @@ const ContextProvider = ({ children }) => {
           addTask,
           removeTask,
           fetchRoleData,
+          fetchReviewedTasks,
         }}
       >
         {children}
