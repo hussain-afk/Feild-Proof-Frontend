@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-
 import {
   MapPin,
   Calendar,
@@ -21,7 +20,13 @@ const MAX_IMAGE_MB = 10;
 const hasSiteLocation = (loc) => {
   if (!loc) return false;
   const { latitude, longitude } = loc;
-  if (latitude === "" || latitude == null || longitude === "" || longitude == null) return false;
+  if (
+    latitude === "" ||
+    latitude == null ||
+    longitude === "" ||
+    longitude == null
+  )
+    return false;
 
   const lat = Number(latitude);
   const lng = Number(longitude);
@@ -48,9 +53,8 @@ const formatCoordinate = (value) => {
   return Number.isFinite(number) ? number.toFixed(4) : "N/A";
 };
 
-// Status badge ka common style (ManagerTaskCard jaisa): chhota dabba, border, icon + text
 const BADGE_STYLE =
-  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-semibold";
+  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium";
 
 const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -58,17 +62,11 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const [imageError, setImageError] = useState("");
   const [actionError, setActionError] = useState("");
 
-  // Stops a fast double click: `isProcessing` (state) updates a moment too late,
-  // but a ref changes at once
   const processingRef = useRef(false);
 
   // -----------------------------
   // STATUS
   // -----------------------------
-  // Backend har worker ki apni progress "myProgress" me bhejta hai:
-  //   "not_started" | "checked_in" | "checked_out"
-  // Ye isliye zaroori hai ke ek task par kai workers ho sakte hain, aur
-  // task ka status sab ka milakar hota hai. Agar myProgress na ho to purane tareeqe se task.status dekho.
   const myProgress = task?.myProgress;
   const taskDone = task?.status === "completed";
   const taskRejected = task?.status === "rejected";
@@ -78,18 +76,19 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
 
   const isCheckedIn = myProgress
     ? myProgress === "checked_in"
-    : task?.status === "in-progress" || task?.status === "in_progress" || Boolean(task?.isCheckedIn);
+    : task?.status === "in-progress" ||
+      task?.status === "in_progress" ||
+      Boolean(task?.isCheckedIn);
 
-  // The worker can not do anything more when he already checked out,
-  // or when the manager already approved or rejected the task
   const isLocked = hasCheckedOut || taskApproved || taskRejected;
 
-  // Status badge: icon + text, bilkul ManagerTaskCard ke getStatusBadge jaisa
   const getStatusBadge = () => {
     if (taskDone) {
       return (
-        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
-          <CheckCircle2 className="w-3.5 h-3.5" />
+        <span
+          className={`${BADGE_STYLE} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
           Completed
         </span>
       );
@@ -97,8 +96,10 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
 
     if (taskApproved) {
       return (
-        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
-          <CheckCircle2 className="w-3.5 h-3.5" />
+        <span
+          className={`${BADGE_STYLE} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
           Approved
         </span>
       );
@@ -106,8 +107,10 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
 
     if (taskRejected) {
       return (
-        <span className={`${BADGE_STYLE} bg-rose-500/10 border-rose-500/20 text-rose-400`}>
-          <X className="w-3.5 h-3.5" />
+        <span
+          className={`${BADGE_STYLE} border-rose-500/25 bg-rose-500/10 text-rose-300`}
+        >
+          <X className="h-3.5 w-3.5" />
           Rejected
         </span>
       );
@@ -115,8 +118,10 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
 
     if (hasCheckedOut) {
       return (
-        <span className={`${BADGE_STYLE} bg-emerald-500/10 border-emerald-500/20 text-emerald-400`}>
-          <CheckCircle2 className="w-3.5 h-3.5" />
+        <span
+          className={`${BADGE_STYLE} border-emerald-500/25 bg-emerald-500/10 text-emerald-300`}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
           You checked out
         </span>
       );
@@ -124,16 +129,20 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
 
     if (isCheckedIn) {
       return (
-        <span className={`${BADGE_STYLE} bg-blue-500/10 border-blue-500/20 text-blue-400`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+        <span
+          className={`${BADGE_STYLE} border-sky-500/25 bg-sky-500/10 text-sky-300`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
           Checked in
         </span>
       );
     }
 
     return (
-      <span className={`${BADGE_STYLE} bg-amber-500/10 border-amber-500/20 text-amber-400`}>
-        <AlertCircle className="w-3.5 h-3.5" />
+      <span
+        className={`${BADGE_STYLE} border-amber-500/25 bg-amber-500/10 text-amber-300`}
+      >
+        <AlertCircle className="h-3.5 w-3.5" />
         Pending check-in
       </span>
     );
@@ -154,7 +163,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   // -----------------------------
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // wahi file dobara chunne par bhi change event aaye
+    e.target.value = "";
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -193,12 +202,12 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
         await onCheckIn?.(task._id, imageFile);
       }
 
-      // Kamyab hone par photo hata do
       handleRemoveImage();
     } catch (error) {
-      // Dashboard ka message (jaise "GPS signal is weak" ya "You are 800m away") card me dikhao
       setActionError(
-        error?.response?.data?.message || error?.message || "Something went wrong. Please try again."
+        error?.response?.data?.message ||
+          error?.message ||
+          "Something went wrong. Please try again."
       );
     } finally {
       processingRef.current = false;
@@ -209,45 +218,45 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const disabled = isProcessing || isLocked || !imageFile;
 
   return (
-    <div className="w-full max-w-[520px] overflow-hidden rounded-xl border border-slate-800 bg-[#111827] transition-colors hover:border-slate-700">
+    <div className="group flex w-full max-w-[520px] flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0c1220] transition-all duration-200 hover:border-slate-700/80">
       {/* ================= HEADER ================= */}
-      <div className="border-b border-slate-800 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
+      <div className="border-b border-slate-800/80 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="mb-0.5 text-xs text-slate-500">Field task</p>
-
-            <h3 className="truncate text-base font-semibold text-white sm:text-lg">
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              Field task
+            </p>
+            <h3 className="truncate text-base font-semibold tracking-tight text-white sm:text-lg">
               {task?.title || "Untitled task"}
             </h3>
-
             <p className="mt-0.5 font-mono text-[10px] text-slate-600">
               ID: #{task?._id?.slice(-6) || "N/A"}
             </p>
           </div>
-
           <div className="shrink-0">{getStatusBadge()}</div>
         </div>
       </div>
 
       {/* ================= DESCRIPTION ================= */}
-      <div className="px-4 pt-3">
+      <div className="px-5 pt-4">
         <p className="line-clamp-2 text-sm leading-relaxed text-slate-400">
-          {task?.description || "No description provided for this field assignment."}
+          {task?.description ||
+            "No description provided for this field assignment."}
         </p>
       </div>
 
       {/* ================= LOCATION ================= */}
-      <div className="px-4 pt-3">
-        <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3">
+      <div className="px-5 pt-4">
+        <div className="rounded-xl border border-slate-800/80 bg-[#0a0f1a] p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-                <MapPin className="h-4 w-4 text-blue-400" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10">
+                <MapPin className="h-4 w-4 text-sky-400" />
               </div>
-
               <div className="min-w-0">
-                <p className="text-xs text-slate-500">Work location</p>
-
+                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                  Work location
+                </p>
                 <p className="mt-0.5 truncate text-sm font-medium text-slate-200">
                   {hasLocation
                     ? location?.name || "Site location"
@@ -261,41 +270,44 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 transition-colors hover:bg-slate-700"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-700/80 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
                 title="Open Google Maps"
                 aria-label="Open in Google Maps"
               >
-                <MapIcon className="h-3.5 w-3.5 text-slate-300" />
+                <MapIcon className="h-4 w-4" />
               </a>
             )}
           </div>
 
-          {/* Coordinates (sirf tab jab location ho) */}
           {hasLocation ? (
-            <div className="mt-3 grid grid-cols-3 gap-3 border-t border-slate-800 pt-3">
+            <div className="mt-3.5 grid grid-cols-3 gap-3 border-t border-slate-800/80 pt-3.5">
               <div>
-                <p className="text-[10px] text-slate-600">Latitude</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                  Latitude
+                </p>
                 <p className="mt-1 font-mono text-[11px] text-slate-400">
                   {formatCoordinate(location.latitude)}
                 </p>
               </div>
-
               <div>
-                <p className="text-[10px] text-slate-600">Longitude</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                  Longitude
+                </p>
                 <p className="mt-1 font-mono text-[11px] text-slate-400">
                   {formatCoordinate(location.longitude)}
                 </p>
               </div>
-
               <div>
-                <p className="text-[10px] text-slate-600">Radius</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                  Radius
+                </p>
                 <p className="mt-1 font-mono text-[11px] text-slate-400">
                   {location.radiusInMeters ?? 100}m
                 </p>
               </div>
             </div>
           ) : (
-            <p className="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">
+            <p className="mt-3.5 border-t border-slate-800/80 pt-3.5 text-xs text-slate-500">
               Your distance from a site is not checked for this task.
             </p>
           )}
@@ -303,62 +315,75 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
       </div>
 
       {/* ================= TASK INFORMATION ================= */}
-      <div className="px-4 py-3">
+      <div className="px-5 py-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+          <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-slate-800/60 bg-[#0a0f1a]/60 p-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80">
               <Calendar className="h-3.5 w-3.5 text-slate-400" />
             </div>
-
             <div className="min-w-0">
-              <p className="text-xs text-slate-600">Due date</p>
-              <p className="mt-0.5 truncate text-xs text-slate-300">{formatDate(task?.dueDate)}</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                Due date
+              </p>
+              <p className="mt-0.5 truncate text-xs text-slate-300">
+                {formatDate(task?.dueDate)}
+              </p>
             </div>
           </div>
 
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800">
+          <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-slate-800/60 bg-[#0a0f1a]/60 p-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80">
               <User className="h-3.5 w-3.5 text-slate-400" />
             </div>
-
             <div className="min-w-0">
-              <p className="text-xs text-slate-600">Assigned by</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                Assigned by
+              </p>
               <p className="mt-0.5 truncate text-xs text-slate-300">
-                {task?.createdBy?.name || task?.createdBy?.username || "Manager"}
+                {task?.createdBy?.name ||
+                  task?.createdBy?.username ||
+                  "Manager"}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ================= IMAGE UPLOAD (only while the worker can still check in or out) ================= */}
+      {/* ================= IMAGE UPLOAD ================= */}
       {!isLocked && (
-        <div className="px-4 pb-3">
-          <p className="mb-2 text-xs font-medium text-slate-300">
-            {isCheckedIn ? "Completion / check-out proof photo" : "Check-in arrival photo"}
-            <span className="text-rose-500"> * required</span>
+        <div className="px-5 pb-4">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            {isCheckedIn
+              ? "Completion / check-out proof photo"
+              : "Check-in arrival photo"}
+            <span className="normal-case tracking-normal text-rose-400">
+              {" "}
+              * required
+            </span>
           </p>
 
           {!imageFile ? (
-            <label className="group flex h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-700 bg-[#0b1220] px-3 transition-all hover:border-blue-500/80 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
-                  <Camera className="h-4 w-4 text-blue-400" />
+            <label className="group flex h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-slate-700/80 bg-[#0a0f1a] px-3.5 transition-all hover:border-sky-500/50 focus-within:border-sky-500/60 focus-within:ring-2 focus-within:ring-sky-500/15">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10">
+                  <Camera className="h-4 w-4 text-sky-400" />
                 </div>
-
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-slate-300 group-hover:text-blue-400">
-                    {isCheckedIn ? "Select work proof photo" : "Select site arrival photo"}
+                  <p className="truncate text-xs font-medium text-slate-300 transition group-hover:text-sky-300">
+                    {isCheckedIn
+                      ? "Select work proof photo"
+                      : "Select site arrival photo"}
                   </p>
-                  <p className="text-[10px] text-slate-600">JPG, PNG or WEBP</p>
+                  <p className="text-[10px] text-slate-600">
+                    JPG, PNG or WEBP · max {MAX_IMAGE_MB} MB
+                  </p>
                 </div>
               </div>
 
-              <span className="shrink-0 rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-400">
+              <span className="shrink-0 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2.5 py-1.5 text-[11px] font-medium text-sky-400">
                 Choose
               </span>
 
-              {/* sr-only (not hidden) so the keyboard can still reach it */}
               <input
                 type="file"
                 accept="image/*"
@@ -367,14 +392,15 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
               />
             </label>
           ) : (
-            <div className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-[#0b1220] px-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
-                  <ImageIcon className="h-4 w-4 text-blue-400" />
+            <div className="flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-sky-500/30 bg-[#0a0f1a] px-3.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10">
+                  <ImageIcon className="h-4 w-4 text-sky-400" />
                 </div>
-
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-slate-300">{imageFile.name}</p>
+                  <p className="truncate text-xs font-medium text-slate-300">
+                    {imageFile.name}
+                  </p>
                   <p className="text-[10px] text-emerald-400">Photo selected</p>
                 </div>
               </div>
@@ -383,7 +409,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
                 type="button"
                 onClick={handleRemoveImage}
                 disabled={isProcessing}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20 disabled:opacity-50"
                 title="Remove photo"
                 aria-label="Remove photo"
               >
@@ -401,19 +427,19 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
       )}
 
       {/* ================= ACTION BUTTON ================= */}
-      <div className="px-4 pb-4">
+      <div className="border-t border-slate-800/80 bg-[#0a0f1a]/40 px-5 py-4">
         <button
           type="button"
           onClick={handleActionClick}
           disabled={disabled}
-          className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all ${
+          className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all ${
             isLocked
-              ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-500"
+              ? "cursor-not-allowed border border-slate-700/80 bg-slate-800/60 text-slate-500"
               : !imageFile
-                ? "cursor-not-allowed border border-slate-700 bg-slate-800/80 text-slate-500"
+                ? "cursor-not-allowed border border-slate-700/80 bg-slate-800/60 text-slate-500"
                 : isCheckedIn
                   ? "bg-rose-600 text-white shadow-lg shadow-rose-600/20 hover:bg-rose-500 active:scale-[0.99]"
-                  : "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 active:scale-[0.99]"
+                  : "bg-sky-600 text-white shadow-lg shadow-sky-600/20 hover:bg-sky-500 active:scale-[0.99]"
           }`}
         >
           {taskRejected ? (
@@ -439,7 +465,9 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           ) : !imageFile ? (
             <>
               <UploadCloud className="h-4 w-4 text-slate-500" />
-              {isCheckedIn ? "Upload work proof to check out" : "Upload photo to enable check-in"}
+              {isCheckedIn
+                ? "Upload work proof to check out"
+                : "Upload photo to enable check-in"}
             </>
           ) : isCheckedIn ? (
             <>
@@ -454,19 +482,18 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           )}
         </button>
 
-        {/* Error yahin card me dikhta hai, jahan worker dekh raha hai */}
         {actionError && (
           <div
             role="alert"
-            className="mt-2 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+            className="mt-3 flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-300"
           >
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{actionError}</span>
+            <span className="leading-relaxed">{actionError}</span>
           </div>
         )}
 
         {!isLocked && !imageFile && !actionError && (
-          <p className="mt-2 text-center text-[11px] text-amber-400/80">
+          <p className="mt-2.5 text-center text-[11px] text-amber-400/80">
             Please capture or attach a proof photo first.
           </p>
         )}

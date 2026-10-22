@@ -1,8 +1,6 @@
 import { useState, useContext } from "react";
-
 import useAuth from "../hooks/useAuth";
 import { context } from "../context/context.jsx";
-
 import {
   ShieldCheck,
   Mail,
@@ -22,17 +20,14 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
-
 import LoadingState from "../ui/LoadingState.jsx";
 
 /* ------------------------------------------------------------------ */
-/* Settings (edit the texts here)                                       */
+/* Settings                                                             */
 /* ------------------------------------------------------------------ */
 
-// The role sent to the backend when someone asks for manager access
 const MANAGER_REQUEST_ROLE = "pending_manager";
 
-// Every field of the form. A field shown on the page is ALWAYS required.
 const FIELDS = {
   name: {
     label: "Full name",
@@ -64,7 +59,6 @@ const FIELDS = {
   },
 };
 
-// The three tabs. `fields` = which inputs the tab shows (all of them are required).
 const MODES = {
   login: {
     tab: "Sign in",
@@ -73,7 +67,7 @@ const MODES = {
     text: "Sign in to open your dashboard.",
     button: "Sign in",
     fields: ["email", "password"],
-    successText: "", // nothing to show: after login the app opens the dashboard
+    successText: "",
   },
   signup: {
     tab: "Register",
@@ -91,21 +85,34 @@ const MODES = {
     text: "Create your account and request manager access.",
     button: "Create account and request access",
     fields: ["name", "email", "password"],
-    successText: "Your account was created and your manager request was sent. An admin will review it.",
+    successText:
+      "Your account was created and your manager request was sent. An admin will review it.",
     info: "An admin reviews every manager request before access is given.",
   },
 };
 
 const FEATURES = [
-  { icon: MapPin, title: "GPS geo-fencing", text: "Check-ins count only inside the site radius." },
-  { icon: Camera, title: "Live verification", text: "Photo and attendance proof on every visit." },
-  { icon: Receipt, title: "Automated invoicing", text: "Tracked hours turn into clear billing." },
+  {
+    icon: MapPin,
+    title: "GPS geo-fencing",
+    text: "Check-ins count only inside the site radius.",
+  },
+  {
+    icon: Camera,
+    title: "Live verification",
+    text: "Photo and attendance proof on every visit.",
+  },
+  {
+    icon: Receipt,
+    title: "Automated invoicing",
+    text: "Tracked hours turn into clear billing.",
+  },
 ];
 
 const EMPTY_FORM = { name: "", email: "", password: "", managerId: "" };
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-white/10 bg-[#080e19] pl-11 pr-4 text-sm text-slate-100 outline-none placeholder:text-slate-600 transition hover:border-white/20 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20";
+  "h-11 w-full rounded-xl border border-slate-800/80 bg-[#0a0f1a] pl-11 pr-4 text-sm text-slate-200 outline-none placeholder:text-slate-600 transition-all duration-200 hover:border-slate-700 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/15";
 
 /* ------------------------------------------------------------------ */
 /* Small components                                                     */
@@ -114,30 +121,33 @@ const inputClass =
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/25">
         <ShieldCheck className="h-5 w-5" />
       </div>
-
       <div className="leading-tight">
-        <p className="text-lg font-bold tracking-tight text-white">
-          Field<span className="text-blue-500">Proof</span>
+        <p className="text-lg font-semibold tracking-tight text-white">
+          Field<span className="text-sky-400">Proof</span>
         </p>
-        <p className="text-xs text-slate-500">Workforce platform</p>
+        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          Workforce platform
+        </p>
       </div>
     </div>
   );
 }
 
-// One input with its label. It is always required.
 function Field({ id, label, icon: Icon, type = "text", hint, ...inputProps }) {
-  const [visible, setVisible] = useState(false); // only used by password fields
+  const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-300">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-slate-500"
+      >
         {label}
-        <span aria-hidden="true" className="ml-0.5 text-red-400">
+        <span aria-hidden="true" className="ml-0.5 text-rose-400">
           *
         </span>
       </label>
@@ -156,21 +166,26 @@ function Field({ id, label, icon: Icon, type = "text", hint, ...inputProps }) {
         {isPassword && (
           <button
             type="button"
-            onClick={() => setVisible((value) => !value)}
+            onClick={() => setVisible((v) => !v)}
             aria-label={visible ? "Hide password" : "Show password"}
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:text-slate-200"
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800/60 hover:text-slate-200"
           >
-            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {visible ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
           </button>
         )}
       </div>
 
-      {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
+      {hint && (
+        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{hint}</p>
+      )}
     </div>
   );
 }
 
-// Green (success) or red (error) message
 function Notice({ notice }) {
   if (!notice) return null;
 
@@ -180,14 +195,14 @@ function Notice({ notice }) {
   return (
     <div
       role={success ? "status" : "alert"}
-      className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm ${
+      className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm ${
         success
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          : "border-red-500/30 bg-red-500/10 text-red-200"
+          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+          : "border-rose-500/25 bg-rose-500/10 text-rose-200"
       }`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-      <p>{notice.text}</p>
+      <p className="leading-relaxed">{notice.text}</p>
     </div>
   );
 }
@@ -203,27 +218,24 @@ function AuthPage() {
   const [authMode, setAuthMode] = useState("login");
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState(null); // { type: "success" | "error", text }
+  const [notice, setNotice] = useState(null);
 
   const mode = MODES[authMode];
 
-  // Typing in a field: update only that field
   const handleChange = (key) => (event) => {
-    setForm((previous) => ({ ...previous, [key]: event.target.value }));
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
-  // Changing the tab: clear the message and the password, keep name and email
   const switchMode = (key) => {
     setAuthMode(key);
     setNotice(null);
-    setForm((previous) => ({ ...previous, password: "", managerId: "" }));
+    setForm((prev) => ({ ...prev, password: "", managerId: "" }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setNotice(null);
 
-    // Clean values (extra spaces removed)
     const values = {
       name: form.name.trim(),
       email: form.email.trim(),
@@ -231,7 +243,6 @@ function AuthPage() {
       managerId: form.managerId.trim(),
     };
 
-    // Every field of this tab must have a value (this also catches "   " spaces only)
     const hasEmptyField = mode.fields.some((key) => !values[key]);
     if (hasEmptyField) {
       setNotice({ type: "error", text: "Please fill in all the fields." });
@@ -246,12 +257,22 @@ function AuthPage() {
       }
 
       if (authMode === "signup") {
-        // Your useAuth register function must accept managerId as its 5th argument
-        await register(values.name, values.email, values.password, undefined, values.managerId);
+        await register(
+          values.name,
+          values.email,
+          values.password,
+          undefined,
+          values.managerId
+        );
       }
 
       if (authMode === "managerRequest") {
-        await register(values.name, values.email, values.password, MANAGER_REQUEST_ROLE);
+        await register(
+          values.name,
+          values.email,
+          values.password,
+          MANAGER_REQUEST_ROLE
+        );
       }
 
       if (mode.successText) {
@@ -261,7 +282,10 @@ function AuthPage() {
     } catch (error) {
       setNotice({
         type: "error",
-        text: error?.response?.data?.message || error?.message || "Something went wrong. Please try again.",
+        text:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Something went wrong. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -273,58 +297,70 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#070b14] px-4 py-8 text-slate-100">
-      {/* Background glow */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#070a12] px-4 py-8 text-slate-100">
+      {/* Soft background glows */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 overflow-hidden"
+      >
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-sky-600/8 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/8 blur-3xl" />
       </div>
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0d1422] shadow-[0_30px_90px_rgba(0,0,0,0.5)] lg:grid-cols-[1fr_1.1fr]">
-        {/* ================= Left: branding (big screens only) ================= */}
-        <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.06] bg-gradient-to-br from-blue-950/60 via-[#0d1422] to-[#080c15] p-10 lg:flex">
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0c1220] shadow-2xl shadow-black/40 lg:grid-cols-[1fr_1.1fr]">
+        {/* ================= Left: branding ================= */}
+        <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-slate-800/80 bg-gradient-to-br from-sky-950/40 via-[#0c1220] to-[#070a12] p-10 lg:flex">
+          {/* Subtle grid */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            className="pointer-events-none absolute inset-0 opacity-[0.05]"
             style={{
               backgroundImage:
                 "linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)",
-              backgroundSize: "36px 36px",
-              maskImage: "radial-gradient(ellipse at top left, black 20%, transparent 70%)",
-              WebkitMaskImage: "radial-gradient(ellipse at top left, black 20%, transparent 70%)",
+              backgroundSize: "40px 40px",
+              maskImage:
+                "radial-gradient(ellipse at top left, black 15%, transparent 65%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at top left, black 15%, transparent 65%)",
             }}
           />
 
           <div className="relative">
             <Logo />
 
-            <span className="mt-10 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+            <span className="mt-10 inline-flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
               Live attendance verification
             </span>
 
-            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-white">
+            <h1 className="mt-6 text-3xl font-semibold leading-tight tracking-tight text-white">
               Work verification and
-              <span className="block text-slate-300">automated invoicing</span>
+              <span className="mt-1 block text-slate-400">
+                automated invoicing
+              </span>
             </h1>
 
-            <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">
-              Real-time attendance, GPS geo-fenced logs and automated invoicing for your field teams.
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-500">
+              Real-time attendance, GPS geo-fenced logs and automated invoicing
+              for your field teams.
             </p>
 
-            <ul className="mt-9 space-y-3">
+            <ul className="mt-10 space-y-3">
               {FEATURES.map(({ icon: Icon, title, text }) => (
                 <li
                   key={title}
-                  className="flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 transition hover:border-blue-500/30 hover:bg-white/[0.05]"
+                  className="flex items-start gap-3.5 rounded-2xl border border-slate-800/60 bg-[#0a0f1a]/60 p-4 transition hover:border-sky-500/25"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
-
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">{title}</p>
-                    <p className="mt-0.5 text-sm text-slate-500">{text}</p>
+                    <p className="text-sm font-medium text-slate-100">
+                      {title}
+                    </p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-slate-500">
+                      {text}
+                    </p>
                   </div>
                 </li>
               ))}
@@ -339,7 +375,7 @@ function AuthPage() {
         {/* ================= Right: form ================= */}
         <main className="p-6 sm:p-10">
           <div className="mx-auto w-full max-w-md">
-            {/* Logo (small screens only) */}
+            {/* Logo (mobile) */}
             <div className="mb-8 lg:hidden">
               <Logo />
             </div>
@@ -348,7 +384,7 @@ function AuthPage() {
             <div
               role="tablist"
               aria-label="Account options"
-              className="mb-8 grid grid-cols-3 gap-1 rounded-xl border border-white/[0.07] bg-[#080e19] p-1"
+              className="mb-8 grid grid-cols-3 gap-1 rounded-xl border border-slate-800/80 bg-[#0a0f1a] p-1"
             >
               {Object.entries(MODES).map(([key, item]) => {
                 const TabIcon = item.icon;
@@ -363,10 +399,10 @@ function AuthPage() {
                     aria-selected={active}
                     aria-controls="auth-form"
                     onClick={() => switchMode(key)}
-                    className={`flex flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-xs font-medium leading-tight transition sm:flex-row sm:gap-2 sm:px-2 sm:py-2.5 sm:text-sm ${
+                    className={`flex flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2.5 text-center text-[11px] font-medium leading-tight transition sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${
                       active
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
+                        : "text-slate-500 hover:text-slate-300"
                     }`}
                   >
                     <TabIcon className="h-4 w-4 shrink-0" />
@@ -377,12 +413,16 @@ function AuthPage() {
             </div>
 
             {/* Heading */}
-            <div className="mb-7">
-              <h2 className="text-2xl font-bold leading-snug tracking-tight text-white">{mode.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">{mode.text}</p>
+            <div className="mb-7 space-y-1.5">
+              <h2 className="text-2xl font-semibold tracking-tight text-white">
+                {mode.title}
+              </h2>
+              <p className="text-sm leading-relaxed text-slate-500">
+                {mode.text}
+              </p>
             </div>
 
-            {/* Form: it shows the fields of the active tab, and all of them are required */}
+            {/* Form */}
             <form
               id="auth-form"
               role="tabpanel"
@@ -407,11 +447,10 @@ function AuthPage() {
                 />
               ))}
 
-              {/* Extra information for this tab (if any) */}
               {mode.info && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3.5 py-3 text-sm text-blue-200">
+                <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3 text-sm text-sky-200">
                   <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>{mode.info}</p>
+                  <p className="leading-relaxed">{mode.info}</p>
                 </div>
               )}
 
@@ -422,7 +461,7 @@ function AuthPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1422] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                className="group mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 text-sm font-medium text-white shadow-lg shadow-sky-600/20 transition hover:bg-sky-500 hover:shadow-sky-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1220] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
                   <>
@@ -438,7 +477,7 @@ function AuthPage() {
               </button>
             </form>
 
-            {/* Switch between sign in and register */}
+            {/* Switch link */}
             <p className="mt-6 text-center text-sm text-slate-500">
               {authMode === "login" ? (
                 <>
@@ -446,7 +485,7 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => switchMode("signup")}
-                    className="font-medium text-blue-400 transition hover:text-blue-300"
+                    className="font-medium text-sky-400 transition hover:text-sky-300"
                   >
                     Create an account
                   </button>
@@ -457,7 +496,7 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => switchMode("login")}
-                    className="font-medium text-blue-400 transition hover:text-blue-300"
+                    className="font-medium text-sky-400 transition hover:text-sky-300"
                   >
                     Sign in
                   </button>
@@ -465,7 +504,7 @@ function AuthPage() {
               )}
             </p>
 
-            <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-slate-600">
+            <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-600">
               <Lock className="h-3 w-3" />
               Secure access to your FieldProof workspace
             </p>

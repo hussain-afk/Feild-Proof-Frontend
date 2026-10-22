@@ -31,12 +31,11 @@ import {
  *
  * Setup:   npm i gsap
  * Route:   <Route path="/" element={<LandingPage />} />
- *          (your app already sends logged-in users from "/" to their dashboard)
  *
- * Palette: ink #0a1220 (page), ink-2 #0f1a2e (surface), line #1d2b45,
- *          mist #e8eef7 (text), steel #93a4bd (muted),
- *          signal #38bdf8 (the product), hi-vis #fbbf24 (the proof stamp and the final call to action)
- * Type:    Bricolage Grotesque for headings, Instrument Sans for everything else
+ * Palette: ink #0a1220, ink-2 #0f1a2e, line #1d2b45,
+ *          mist #e8eef7, steel #93a4bd,
+ *          signal #38bdf8, hi-vis #fbbf24
+ * Type:    Bricolage Grotesque (headings), Instrument Sans (body)
  */
 
 gsap.registerPlugin(ScrollTrigger);
@@ -45,7 +44,8 @@ const LOGIN_PATH = "/auth";
 const REGISTER_PATH = "/auth";
 
 const prefersReducedMotion = () =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ------------------------------------------------------------------ */
 /* Content                                                              */
@@ -58,7 +58,6 @@ const NAV = [
   { label: "Questions", href: "#faq" },
 ];
 
-// Short, factual numbers shown right under the hero
 const FACTS = [
   { icon: Crosshair, value: "50 m to 1 km", label: "Site radius you control" },
   { icon: Camera, value: "2 photos", label: "At check-in and check-out" },
@@ -127,7 +126,6 @@ const STEPS = [
   },
 ];
 
-// tone decides the colour of the small status pill in the preview card
 const ROLES = {
   manager: {
     label: "Manager",
@@ -234,7 +232,12 @@ const FEED_DOT = {
   delete: "bg-rose-400",
 };
 
-const FEED_LABEL = { in: "Check-in", out: "Check-out", task: "Task", delete: "Deleted" };
+const FEED_LABEL = {
+  in: "Check-in",
+  out: "Check-out",
+  task: "Task",
+  delete: "Deleted",
+};
 
 const FEED_WHEN = ["Just now", "2 min ago", "6 min ago", "11 min ago", "18 min ago"];
 
@@ -251,7 +254,6 @@ export default function LandingPage() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // ---- Header turns solid once the page is scrolled (not an animation, so always on) ----
       ScrollTrigger.create({
         trigger: document.body,
         start: "top -12",
@@ -259,7 +261,6 @@ export default function LandingPage() {
         onToggle: (self) => setScrolled(self.isActive),
       });
 
-      // ---- Mark the nav link of the section the reader is in ----
       NAV.forEach((item) => {
         const section = document.querySelector(item.href);
         if (!section) return;
@@ -274,7 +275,6 @@ export default function LandingPage() {
         });
       });
 
-      // ---- Highlight the step the reader is on ----
       gsap.utils.toArray(".step").forEach((step) => {
         ScrollTrigger.create({
           trigger: step,
@@ -284,7 +284,6 @@ export default function LandingPage() {
         });
       });
 
-      // ---- Only run the live feed while it is on screen ----
       ScrollTrigger.create({
         trigger: ".feed-box",
         start: "top 90%",
@@ -292,18 +291,15 @@ export default function LandingPage() {
         onToggle: (self) => setFeedActive(self.isActive),
       });
 
-      // ---- Everything below is real motion, so it is skipped for "reduce motion" ----
       const mm = gsap.matchMedia();
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // 1) The page-load moment: headline, then the visual, then the check-in story
         const intro = gsap.timeline({ defaults: { ease: "power3.out" } });
         intro
           .from(".hero-line", { yPercent: 105, duration: 0.9, stagger: 0.12 })
           .from(".hero-fade", { y: 18, opacity: 0, duration: 0.7, stagger: 0.1 }, "-=0.5")
           .from(".hero-panel", { y: 30, opacity: 0, duration: 0.9 }, "-=0.9");
 
-        // 2) The story in the hero panel: a worker walks into the radius, the stamp lands
         const story = gsap.timeline({ repeat: -1, repeatDelay: 1.4, delay: 1.2 });
         story
           .set(".worker-dot", { x: -130, y: -100, opacity: 0 })
@@ -314,18 +310,27 @@ export default function LandingPage() {
           .to(".worker-dot", { x: 30, y: 22, duration: 2.6, ease: "power2.inOut" })
           .to(".status-chip", { opacity: 1, y: 0, duration: 0.4 }, "-=0.5")
           .to(".photo-card", { opacity: 1, y: 0, duration: 0.4 }, "-=0.2")
-          .to(".stamp", { opacity: 1, scale: 1, rotation: -10, duration: 0.26, ease: "power4.in" })
+          .to(".stamp", { opacity: 1, scale: 1, rotate: -10, duration: 0.26, ease: "power4.in" })
           .to(".hero-visual", { y: 4, duration: 0.07, yoyo: true, repeat: 1 })
           .to({}, { duration: 2.4 })
-          .to([".stamp", ".status-chip", ".worker-dot", ".photo-card"], { opacity: 0, duration: 0.5 });
+          .to([".stamp", ".status-chip", ".worker-dot", ".photo-card"], {
+            opacity: 0,
+            duration: 0.5,
+          });
 
         gsap.fromTo(
           ".radar-ring",
           { scale: 0.3, opacity: 0.55 },
-          { scale: 1.5, opacity: 0, duration: 3.4, ease: "power1.out", repeat: -1, stagger: 1.1 }
+          {
+            scale: 1.5,
+            opacity: 0,
+            duration: 3.4,
+            ease: "power1.out",
+            repeat: -1,
+            stagger: 1.1,
+          }
         );
 
-        // 3) The route line fills as you scroll through the steps
         gsap.fromTo(
           ".steps-fill",
           { scaleY: 0 },
@@ -333,20 +338,26 @@ export default function LandingPage() {
             scaleY: 1,
             ease: "none",
             transformOrigin: "top",
-            scrollTrigger: { trigger: ".steps", start: "top 60%", end: "bottom 60%", scrub: 0.4 },
+            scrollTrigger: {
+              trigger: ".steps",
+              start: "top 60%",
+              end: "bottom 60%",
+              scrub: 0.4,
+            },
           }
         );
 
-        // 4) Thin reading progress under the header
         gsap.to(".scroll-progress", {
           scaleX: 1,
           ease: "none",
-          scrollTrigger: { trigger: document.body, start: "top top", end: "bottom bottom", scrub: 0.2 },
+          scrollTrigger: {
+            trigger: document.body,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.2,
+          },
         });
 
-        // 5) Cards and stats slide up once, the first time they are seen
-        // (immediateRender: false means the content is NEVER hidden up front,
-        //  so if a trigger does not fire, the card is still visible - no empty gaps)
         gsap.utils.toArray(".reveal").forEach((el, i) => {
           gsap.fromTo(
             el,
@@ -365,13 +376,11 @@ export default function LandingPage() {
       });
     }, rootRef);
 
-    // Fonts change the page height, so measure again once they load
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
 
     return () => ctx.revert();
   }, []);
 
-  // Press Escape to close the mobile menu
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
@@ -382,8 +391,11 @@ export default function LandingPage() {
   return (
     <div
       ref={rootRef}
-      className="min-h-screen bg-[#0a1220] text-[#e8eef7] antialiased"
-      style={{ fontFamily: "'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif" }}
+      className="min-h-screen bg-[#0a1220] text-[#e8eef7] antialiased selection:bg-sky-400/30"
+      style={{
+        fontFamily:
+          "'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
+      }}
     >
       <style>{CSS}</style>
 
@@ -393,7 +405,12 @@ export default function LandingPage() {
 
       <div className="scroll-progress fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-[#38bdf8]" />
 
-      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} scrolled={scrolled} activeNav={activeNav} />
+      <Header
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        scrolled={scrolled}
+        activeNav={activeNav}
+      />
 
       <main id="main">
         <Hero />
@@ -415,7 +432,6 @@ export default function LandingPage() {
 /* Shared pieces                                                        */
 /* ------------------------------------------------------------------ */
 
-// Small label + big title + short text, used at the top of every section
 function SectionHeading({ eyebrow, title, text, className = "" }) {
   return (
     <div className={className}>
@@ -423,8 +439,12 @@ function SectionHeading({ eyebrow, title, text, className = "" }) {
         <span className="h-px w-6 bg-[#38bdf8]" />
         {eyebrow}
       </p>
-      <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{title}</h2>
-      {text && <p className="mt-4 max-w-xl text-lg leading-8 text-[#93a4bd]">{text}</p>}
+      <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+        {title}
+      </h2>
+      {text && (
+        <p className="mt-4 max-w-xl text-lg leading-8 text-[#93a4bd]">{text}</p>
+      )}
     </div>
   );
 }
@@ -432,10 +452,12 @@ function SectionHeading({ eyebrow, title, text, className = "" }) {
 function Logo() {
   return (
     <a href="#top" className="flex items-center gap-2.5" aria-label="FieldProof home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.35)]">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.35)]">
         <ShieldCheck className="h-5 w-5" strokeWidth={2.4} />
       </span>
-      <span className="font-display text-xl font-bold tracking-tight">FieldProof</span>
+      <span className="font-display text-xl font-bold tracking-tight">
+        FieldProof
+      </span>
     </a>
   );
 }
@@ -447,10 +469,14 @@ function Logo() {
 function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
   const panelRef = useRef(null);
 
-  // Slide the mobile menu in when it opens
   useEffect(() => {
     if (menuOpen && panelRef.current && !prefersReducedMotion()) {
-      gsap.from(panelRef.current, { y: -12, opacity: 0, duration: 0.3, ease: "power2.out" });
+      gsap.from(panelRef.current, {
+        y: -12,
+        opacity: 0,
+        duration: 0.3,
+        ease: "power2.out",
+      });
     }
   }, [menuOpen]);
 
@@ -459,8 +485,8 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
   return (
     <header
       className={`site-header fixed inset-x-0 top-0 z-50 border-b border-transparent ${
-        scrolled ? "is-scrolled" : ""
-      } ${menuOpen ? "is-open" : ""}`}
+        scrolled || menuOpen ? "is-scrolled" : ""
+      }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Logo />
@@ -473,8 +499,10 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "true" : undefined}
-                className={`relative rounded-md px-3.5 py-2 text-sm transition-colors ${
-                  active ? "text-[#e8eef7]" : "text-[#93a4bd] hover:text-[#e8eef7]"
+                className={`relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
+                  active
+                    ? "text-white"
+                    : "text-[#93a4bd] hover:text-white"
                 }`}
               >
                 {item.label}
@@ -491,13 +519,13 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
         <div className="hidden items-center gap-2 md:flex">
           <Link
             to={LOGIN_PATH}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-[#e8eef7] transition-colors hover:bg-white/5"
+            className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#e8eef7] transition-colors hover:bg-white/5"
           >
             Log in
           </Link>
           <Link
             to={REGISTER_PATH}
-            className="btn-primary rounded-lg bg-[#38bdf8] px-4 py-2 text-sm font-semibold text-[#0a1220] hover:bg-[#7dd3fc]"
+            className="btn-primary rounded-xl bg-[#38bdf8] px-4 py-2.5 text-sm font-semibold text-[#0a1220] shadow-lg shadow-sky-500/20 hover:bg-[#7dd3fc]"
           >
             Get started
           </Link>
@@ -508,14 +536,17 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-[#e8eef7] hover:bg-white/5 md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-[#e8eef7] hover:bg-white/5 md:hidden"
         >
           {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {menuOpen && (
-        <div ref={panelRef} className="border-t border-[#1d2b45] bg-[#0a1220] px-5 pb-5 pt-2 md:hidden">
+        <div
+          ref={panelRef}
+          className="border-t border-[#1d2b45] bg-[#0a1220] px-5 pb-5 pt-2 md:hidden"
+        >
           <nav aria-label="Mobile" className="flex flex-col">
             {NAV.map((item) => (
               <a
@@ -532,13 +563,13 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Link
               to={LOGIN_PATH}
-              className="rounded-lg border border-[#1d2b45] py-2.5 text-center text-sm font-medium"
+              className="rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium"
             >
               Log in
             </Link>
             <Link
               to={REGISTER_PATH}
-              className="rounded-lg bg-[#38bdf8] py-2.5 text-center text-sm font-semibold text-[#0a1220]"
+              className="rounded-xl bg-[#38bdf8] py-2.5 text-center text-sm font-semibold text-[#0a1220]"
             >
               Get started
             </Link>
@@ -556,7 +587,6 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden pt-28 sm:pt-32">
-      {/* soft glows behind the content */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-40 top-10 h-[480px] w-[480px] rounded-full bg-[#38bdf8]/10 blur-3xl"
@@ -568,8 +598,8 @@ function Hero() {
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
         <div>
-          <p className="hero-fade mb-6 inline-flex items-center gap-2 rounded-full border border-[#1d2b45] bg-[#0f1a2e] py-1.5 pl-2 pr-4 text-xs font-medium text-[#93a4bd]">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
+          <p className="hero-fade mb-6 inline-flex items-center gap-2.5 rounded-full border border-[#1d2b45] bg-[#0f1a2e]/80 py-1.5 pl-2 pr-4 text-xs font-medium text-[#93a4bd] backdrop-blur-sm">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
               <MapPin className="h-3 w-3" strokeWidth={2.6} />
             </span>
             GPS and photo proof for field teams
@@ -587,21 +617,21 @@ function Hero() {
           </h1>
 
           <p className="hero-fade mt-6 max-w-xl text-lg leading-8 text-[#93a4bd]">
-            FieldProof checks every worker's GPS position and photo against the site you set, so
-            attendance stops being a matter of trust.
+            FieldProof checks every worker&apos;s GPS position and photo against
+            the site you set, so attendance stops being a matter of trust.
           </p>
 
-          <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
+          <div className="hero-fade mt-9 flex flex-wrap items-center gap-3">
             <Link
               to={REGISTER_PATH}
-              className="btn-primary group inline-flex items-center gap-2 rounded-lg bg-[#38bdf8] px-6 py-3 text-base font-semibold text-[#0a1220] hover:bg-[#7dd3fc]"
+              className="btn-primary group inline-flex items-center gap-2 rounded-xl bg-[#38bdf8] px-7 py-3.5 text-base font-semibold text-[#0a1220] shadow-lg shadow-sky-500/25 hover:bg-[#7dd3fc]"
             >
               Get started
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <a
               href="#how"
-              className="rounded-lg border border-[#2a3b5a] px-6 py-3 text-base font-medium transition-colors hover:border-[#3d5380] hover:bg-white/5"
+              className="rounded-xl border border-[#2a3b5a] px-7 py-3.5 text-base font-medium text-[#e8eef7] transition-all hover:border-[#3d5380] hover:bg-white/[0.04]"
             >
               See how it works
             </a>
@@ -619,22 +649,20 @@ function Hero() {
   );
 }
 
-// The one memorable moment: a worker walks into the radius and the check-in stamp lands.
 function HeroVisual() {
   return (
     <div className="hero-panel">
       <div
         role="img"
         aria-label="Animation: a worker walks toward a work site. When they are inside the radius, a check-in stamp appears."
-        className="hero-visual relative h-[380px] overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] shadow-[0_30px_80px_-30px_rgba(56,189,248,0.25)] sm:h-[460px]"
+        className="hero-visual relative h-[380px] overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] shadow-[0_40px_100px_-40px_rgba(56,189,248,0.35)] sm:h-[460px]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(147,164,189,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(147,164,189,0.07) 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       >
-        {/* top bar */}
-        <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-[#1d2b45] bg-[#0f1a2e]/95 px-4 py-3 text-xs text-[#93a4bd]">
+        <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b border-[#1d2b45]/80 bg-[#0f1a2e]/90 px-4 py-3 text-xs text-[#93a4bd] backdrop-blur-sm">
           <span className="flex items-center gap-2 font-medium text-[#e8eef7]">
             <span className="flex gap-1" aria-hidden="true">
               <span className="h-2 w-2 rounded-full bg-[#1d2b45]" />
@@ -643,10 +671,11 @@ function HeroVisual() {
             </span>
             Inspect generator
           </span>
-          <span className="rounded-md border border-[#1d2b45] bg-[#0a1220] px-2 py-0.5">Radius 100 m</span>
+          <span className="rounded-md border border-[#1d2b45] bg-[#0a1220] px-2 py-0.5">
+            Radius 100 m
+          </span>
         </div>
 
-        {/* radar */}
         <div className="absolute inset-0 grid place-items-center pt-8">
           <span className="radar-ring col-start-1 row-start-1 h-48 w-48 rounded-full border border-[#38bdf8]/60 sm:h-60 sm:w-60" />
           <span className="radar-ring col-start-1 row-start-1 h-48 w-48 rounded-full border border-[#38bdf8]/60 sm:h-60 sm:w-60" />
@@ -659,10 +688,8 @@ function HeroVisual() {
           </span>
         </div>
 
-        {/* worker */}
         <span className="worker-dot absolute left-1/2 top-[calc(50%+16px)] -ml-2 -mt-2 h-4 w-4 rounded-full border-2 border-[#0a1220] bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.2)]" />
 
-        {/* photo proof card */}
         <div className="photo-card absolute left-4 top-16 z-10 flex items-center gap-3 rounded-xl border border-[#2a3b5a] bg-[#0a1220]/90 p-2.5 pr-4 backdrop-blur">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#38bdf8]/10 text-[#38bdf8]">
             <Camera className="h-5 w-5" />
@@ -673,17 +700,17 @@ function HeroVisual() {
           </div>
         </div>
 
-        {/* status */}
         <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
           <div className="status-chip rounded-lg border border-[#2a3b5a] bg-[#0a1220]/90 px-3 py-2 text-xs text-[#e8eef7] backdrop-blur">
             Ali Raza is inside the radius. Photo attached.
           </div>
         </div>
 
-        {/* the stamp */}
-        <div className="stamp absolute bottom-16 right-5 flex h-24 w-24 -rotate-[10deg] flex-col items-center justify-center rounded-full border-[3px] border-[#fbbf24] bg-[#fbbf24]/10 text-center text-[#fbbf24] sm:bottom-20 sm:right-8 sm:h-28 sm:w-28">
+        <div className="stamp absolute bottom-16 right-5 flex h-24 w-24 -rotate-[10deg] flex-col items-center justify-center rounded-full border-[3px] border-[#fbbf24] bg-[#fbbf24]/[0.12] text-center text-[#fbbf24] shadow-[0_0_40px_rgba(251,191,36,0.25)] sm:bottom-20 sm:right-8 sm:h-28 sm:w-28">
           <span className="font-display text-xs font-semibold">Checked in</span>
-          <span className="font-display text-xl font-bold leading-tight">08:42</span>
+          <span className="font-display text-xl font-bold leading-tight">
+            08:42
+          </span>
         </div>
       </div>
     </div>
@@ -696,16 +723,26 @@ function HeroVisual() {
 
 function Facts() {
   return (
-    <section aria-label="Key facts" className="border-y border-[#1d2b45] bg-[#0c1626]">
+    <section
+      aria-label="Key facts"
+      className="border-y border-[#1d2b45] bg-[#0c1626]"
+    >
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-[#1d2b45] lg:grid-cols-4">
         {FACTS.map(({ icon: Icon, value, label }) => (
-          <div key={label} className="reveal flex items-center gap-4 bg-[#0c1626] px-5 py-7 sm:px-8">
+          <div
+            key={label}
+            className="reveal flex items-center gap-4 bg-[#0c1626] px-5 py-7 sm:px-8"
+          >
             <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#1d2b45] bg-[#0f1a2e] text-[#38bdf8] sm:flex">
               <Icon className="h-5 w-5" />
             </span>
             <div>
-              <p className="font-display text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
-              <p className="mt-0.5 text-xs leading-5 text-[#93a4bd] sm:text-sm">{label}</p>
+              <p className="font-display text-xl font-bold tracking-tight sm:text-2xl">
+                {value}
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-[#93a4bd] sm:text-sm">
+                {label}
+              </p>
             </div>
           </div>
         ))}
@@ -735,11 +772,15 @@ function Proof() {
               key={title}
               className="reveal card-hover group relative overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] p-6"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#38bdf8]/15 bg-[#38bdf8]/10 text-[#38bdf8] transition-colors group-hover:bg-[#38bdf8] group-hover:text-[#0a1220]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#38bdf8]/20 bg-[#38bdf8]/10 text-[#38bdf8] transition-all duration-300 group-hover:scale-105 group-hover:border-[#38bdf8]/40 group-hover:bg-[#38bdf8] group-hover:text-[#0a1220]">
                 <Icon className="h-5 w-5" />
               </span>
-              <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">{title}</h3>
-              <p className="mt-2 leading-7 text-[#93a4bd]">{text}</p>
+              <h3 className="mt-5 font-display text-lg font-semibold tracking-tight text-white">
+                {title}
+              </h3>
+              <p className="mt-2.5 text-[15px] leading-7 text-[#93a4bd]">
+                {text}
+              </p>
             </li>
           ))}
         </ul>
@@ -754,20 +795,31 @@ function Proof() {
 
 function HowItWorks() {
   return (
-    <section id="how" className="scroll-mt-20 border-y border-[#1d2b45] bg-[#0f1a2e] py-20 sm:py-28">
+    <section
+      id="how"
+      className="scroll-mt-20 border-y border-[#1d2b45] bg-[#0f1a2e] py-20 sm:py-28"
+    >
       <div className="mx-auto max-w-3xl px-5">
-        <SectionHeading eyebrow="How it works" title="From assignment to proof in three steps" />
+        <SectionHeading
+          eyebrow="How it works"
+          title="From assignment to proof in three steps"
+        />
 
         <ol className="steps relative mt-14">
-          {/* the route: a grey track with a blue fill that grows as you scroll */}
-          <span aria-hidden="true" className="absolute bottom-6 left-[19.5px] top-6 w-px bg-[#1d2b45]" />
+          <span
+            aria-hidden="true"
+            className="absolute bottom-6 left-[19.5px] top-6 w-px bg-[#1d2b45]"
+          />
           <span
             aria-hidden="true"
             className="steps-fill absolute bottom-6 left-[19.5px] top-6 w-px bg-[#38bdf8]"
           />
 
           {STEPS.map((step, index) => (
-            <li key={step.title} className="step relative flex gap-6 pb-14 last:pb-0">
+            <li
+              key={step.title}
+              className="step relative flex gap-6 pb-14 last:pb-0"
+            >
               <span className="step-dot relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#1d2b45] bg-[#0f1a2e] font-display text-base font-bold text-[#93a4bd]">
                 {index + 1}
               </span>
@@ -780,7 +832,9 @@ function HowItWorks() {
                     {step.tag}
                   </span>
                 </div>
-                <p className="mt-2 max-w-xl leading-7 text-[#93a4bd]">{step.text}</p>
+                <p className="mt-2 max-w-xl leading-7 text-[#93a4bd]">
+                  {step.text}
+                </p>
               </div>
             </li>
           ))}
@@ -799,7 +853,6 @@ function Roles() {
   const panelRef = useRef(null);
   const firstRender = useRef(true);
 
-  // Fade the panel when the person switches tabs (an answer to their click)
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -828,7 +881,7 @@ function Roles() {
         <div
           role="tablist"
           aria-label="Choose a role"
-          className="mt-10 inline-flex rounded-xl border border-[#1d2b45] bg-[#0f1a2e] p-1"
+          className="mt-10 inline-flex rounded-xl border border-[#1d2b45] bg-[#0a1220] p-1.5"
         >
           {Object.entries(ROLES).map(([key, item]) => {
             const Icon = item.icon;
@@ -842,7 +895,9 @@ function Roles() {
                 aria-controls="role-panel"
                 onClick={() => setRole(key)}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:px-5 ${
-                  role === key ? "bg-[#38bdf8] text-[#0a1220]" : "text-[#93a4bd] hover:text-[#e8eef7]"
+                  role === key
+                    ? "bg-[#38bdf8] text-[#0a1220] shadow-md shadow-sky-500/20"
+                    : "text-[#93a4bd] hover:text-white"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -865,7 +920,10 @@ function Roles() {
             </h3>
             <ul className="mt-6 space-y-4">
               {current.points.map((point) => (
-                <li key={point} className="flex items-start gap-3 text-[#cbd5e1]">
+                <li
+                  key={point}
+                  className="flex items-start gap-3 text-[#cbd5e1]"
+                >
                   <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
                     <Check className="h-3.5 w-3.5" strokeWidth={3} />
                   </span>
@@ -875,7 +933,6 @@ function Roles() {
             </ul>
           </div>
 
-          {/* A small sample of what this role sees */}
           <div className="overflow-hidden rounded-xl border border-[#1d2b45] bg-[#0a1220]">
             <div className="flex items-center justify-between border-b border-[#1d2b45] px-4 py-3 text-sm">
               <span className="font-medium">{current.previewTitle}</span>
@@ -883,10 +940,17 @@ function Roles() {
             </div>
             <ul className="divide-y divide-[#1d2b45]">
               {current.preview.map((row) => (
-                <li key={row.title} className="flex items-center justify-between gap-3 px-4 py-3.5">
+                <li
+                  key={row.title}
+                  className="flex items-center justify-between gap-3 px-4 py-3.5"
+                >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[#e8eef7]">{row.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-[#93a4bd]">{row.meta}</p>
+                    <p className="truncate text-sm font-medium text-[#e8eef7]">
+                      {row.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-[#93a4bd]">
+                      {row.meta}
+                    </p>
                   </div>
                   <span
                     className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TONE[row.tone]}`}
@@ -933,21 +997,25 @@ function ActivityFeed({ active }) {
   const [tick, setTick] = useState(0);
   const listRef = useRef(null);
 
-  // Add a new row every few seconds, only while the box is on screen
   useEffect(() => {
     if (!active || prefersReducedMotion()) return undefined;
     const id = setInterval(() => setTick((t) => t + 1), 3000);
     return () => clearInterval(id);
   }, [active]);
 
-  // Highlight the newest row when it arrives
   useEffect(() => {
     if (tick === 0 || !listRef.current || prefersReducedMotion()) return;
     const newest = listRef.current.firstElementChild;
     gsap.fromTo(
       newest,
       { opacity: 0, y: -14, backgroundColor: "rgba(56,189,248,0.18)" },
-      { opacity: 1, y: 0, backgroundColor: "rgba(56,189,248,0)", duration: 0.6, ease: "power2.out" }
+      {
+        opacity: 1,
+        y: 0,
+        backgroundColor: "rgba(56,189,248,0)",
+        duration: 0.6,
+        ease: "power2.out",
+      }
     );
   }, [tick]);
 
@@ -976,12 +1044,18 @@ function ActivityFeed({ active }) {
             key={row.key}
             className="flex items-start gap-3 border-b border-[#1d2b45] px-5 py-3.5 last:border-b-0"
           >
-            <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${FEED_DOT[row.type]}`} />
+            <span
+              className={`mt-2 h-2 w-2 shrink-0 rounded-full ${FEED_DOT[row.type]}`}
+            />
             <div className="flex-1">
               <p className="text-sm leading-6 text-[#e8eef7]">{row.text}</p>
-              <p className="text-[11px] uppercase tracking-wider text-[#5f7191]">{FEED_LABEL[row.type]}</p>
+              <p className="text-[11px] uppercase tracking-wider text-[#5f7191]">
+                {FEED_LABEL[row.type]}
+              </p>
             </div>
-            <span className="shrink-0 pt-0.5 text-xs tabular-nums text-[#93a4bd]">{row.when}</span>
+            <span className="shrink-0 pt-0.5 text-xs tabular-nums text-[#93a4bd]">
+              {row.when}
+            </span>
           </li>
         ))}
       </ul>
@@ -999,7 +1073,10 @@ function Faq() {
   return (
     <section id="faq" className="scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-5">
-        <SectionHeading eyebrow="Questions" title="Questions people ask first" />
+        <SectionHeading
+          eyebrow="Questions"
+          title="Questions people ask first"
+        />
 
         <div className="mt-10 space-y-3">
           {FAQ.map((item, index) => (
@@ -1022,7 +1099,6 @@ function FaqItem({ id, question, answer, open, onToggle }) {
   const bodyRef = useRef(null);
   const firstRender = useRef(true);
 
-  // Open and close the answer smoothly
   useEffect(() => {
     const el = bodyRef.current;
     if (!el) return;
@@ -1042,8 +1118,10 @@ function FaqItem({ id, question, answer, open, onToggle }) {
 
   return (
     <div
-      className={`rounded-xl border transition-colors duration-300 ${
-        open ? "border-[#2a3b5a] bg-[#0f1a2e]" : "border-[#1d2b45] bg-[#0c1626] hover:border-[#2a3b5a]"
+      className={`rounded-2xl border transition-all duration-300 ${
+        open
+          ? "border-[#2a3b5a] bg-[#0f1a2e] shadow-lg shadow-black/20"
+          : "border-[#1d2b45] bg-[#0c1626] hover:border-[#2a3b5a]"
       }`}
     >
       <h3>
@@ -1076,31 +1154,30 @@ function FaqItem({ id, question, answer, open, onToggle }) {
 function FinalCta() {
   return (
     <section className="relative overflow-hidden bg-[#fbbf24] text-[#0a1220]">
-      {/* hazard tape stripe, the hi-vis touch */}
-      <div aria-hidden="true" className="hazard h-2.5 w-full" />
+      <div aria-hidden="true" className="hazard h-3 w-full" />
 
-      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-8 px-5 py-20 md:flex-row md:items-center sm:py-24">
+      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-10 px-5 py-20 md:flex-row md:items-center sm:py-24">
         <div className="max-w-xl">
-          <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+          <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-[2.75rem]">
             See who is really on site today
           </h2>
-          <p className="mt-3 text-lg leading-8 text-[#3b3410]">
-            Create an account, add your first task and watch the first check-in arrive with its
-            photo.
+          <p className="mt-4 text-lg leading-8 text-[#3b3410]/90">
+            Create an account, add your first task and watch the first check-in
+            arrive with its photo.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <Link
             to={REGISTER_PATH}
-            className="group inline-flex items-center gap-2 rounded-lg bg-[#0a1220] px-6 py-3 text-base font-semibold text-[#e8eef7] transition-colors hover:bg-[#16233a]"
+            className="group inline-flex items-center gap-2 rounded-xl bg-[#0a1220] px-7 py-3.5 text-base font-semibold text-[#e8eef7] shadow-xl shadow-black/20 transition hover:bg-[#16233a]"
           >
             Get started
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             to={LOGIN_PATH}
-            className="rounded-lg border-2 border-[#0a1220] px-6 py-3 text-base font-semibold transition-colors hover:bg-[#0a1220]/10"
+            className="rounded-xl border-2 border-[#0a1220]/80 px-7 py-3.5 text-base font-semibold transition hover:bg-[#0a1220]/10"
           >
             Log in
           </Link>
@@ -1121,8 +1198,8 @@ function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-6 text-[#93a4bd]">
-            Proof that your field team was where they said they were, with the time and the photo to
-            show for it.
+            Proof that your field team was where they said they were, with the
+            time and the photo to show for it.
           </p>
         </div>
 
@@ -1154,10 +1231,12 @@ function Footer() {
       </div>
 
       <div className="mx-auto mt-12 flex max-w-6xl flex-col items-start justify-between gap-4 border-t border-[#1d2b45] px-5 pt-6 text-sm text-[#93a4bd] sm:flex-row sm:items-center">
-        <span>&copy; {new Date().getFullYear()} FieldProof. All rights reserved.</span>
+        <span>
+          &copy; {new Date().getFullYear()} FieldProof. All rights reserved.
+        </span>
         <a
           href="#top"
-          className="inline-flex items-center gap-2 rounded-lg border border-[#1d2b45] px-3 py-1.5 transition-colors hover:border-[#2a3b5a] hover:text-[#e8eef7]"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#1d2b45] px-3 py-1.5 transition-colors hover:border-[#2a3b5a] hover:text-[#e8eef7]"
         >
           Back to top
           <ArrowUp className="h-3.5 w-3.5" />
@@ -1175,11 +1254,17 @@ function FooterColumn({ title, links }) {
         {links.map((link) => (
           <li key={link.label}>
             {link.to ? (
-              <Link to={link.to} className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]">
+              <Link
+                to={link.to}
+                className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]"
+              >
                 {link.label}
               </Link>
             ) : (
-              <a href={link.href} className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]">
+              <a
+                href={link.href}
+                className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]"
+              >
                 {link.label}
               </a>
             )}
@@ -1191,51 +1276,98 @@ function FooterColumn({ title, links }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Page-level CSS (fonts, header states, step highlight, small extras)  */
+/* Page-level CSS                                                       */
 /* ------------------------------------------------------------------ */
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..600&display=swap');
 
-.font-display { font-family: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif; }
-
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-
-::selection { background: rgba(56,189,248,.35); color: #fff; }
-
-/* Keyboard focus: a clear ring on everything clickable */
-a:focus-visible, button:focus-visible {
-  outline: 2px solid #38bdf8;
-  outline-offset: 3px;
-  border-radius: 8px;
+.font-display {
+  font-family: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif;
 }
 
-/* "Skip to content" link, only visible when focused with the keyboard */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.35);
+  color: #fff;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
 .skip-link {
-  position: fixed; left: 16px; top: -60px; z-index: 100;
-  background: #38bdf8; color: #0a1220; font-weight: 600;
-  padding: 10px 16px; border-radius: 8px; transition: top .2s ease;
+  position: fixed;
+  left: 16px;
+  top: -60px;
+  z-index: 100;
+  background: #38bdf8;
+  color: #0a1220;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  transition: top 0.2s ease;
 }
 .skip-link:focus { top: 16px; }
 
-.site-header { transition: background-color .3s ease, border-color .3s ease, backdrop-filter .3s ease; }
-.site-header.is-scrolled,
-.site-header.is-open { background-color: rgba(10,18,32,.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom-color: #1d2b45; }
+.site-header {
+  transition: background-color 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
+}
+.site-header.is-scrolled {
+  background-color: rgba(10, 18, 32, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: #1d2b45;
+  box-shadow: 0 4px 30px -10px rgba(0, 0, 0, 0.4);
+}
 
-/* Primary button: lifts a little on hover */
-.btn-primary { transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px rgba(56,189,248,.6); }
+.btn-primary {
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px -10px rgba(56, 189, 248, 0.55);
+}
 
-/* Feature cards: soft lift and a blue glow on hover */
-.card-hover { transition: border-color .3s ease, transform .3s ease, box-shadow .3s ease; }
-.card-hover:hover { border-color: rgba(56,189,248,.4); transform: translateY(-3px); box-shadow: 0 20px 40px -24px rgba(56,189,248,.35); }
+.card-hover {
+  transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 48px -28px rgba(56, 189, 248, 0.4);
+}
 
-.step .step-dot { transition: background-color .3s ease, border-color .3s ease, color .3s ease; }
-.step .step-title { transition: color .3s ease; }
-.step.is-active .step-dot { background-color: #38bdf8; border-color: #38bdf8; color: #0a1220; }
-.step:not(.is-active) .step-title { color: #cbd5e1; }
+.step .step-dot {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+.step .step-title {
+  transition: color 0.3s ease;
+}
+.step.is-active .step-dot {
+  background-color: #38bdf8;
+  border-color: #38bdf8;
+  color: #0a1220;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+.step:not(.is-active) .step-title {
+  color: #cbd5e1;
+}
 
-/* Hazard tape above the final call to action */
-.hazard { background: repeating-linear-gradient(-45deg, #0a1220 0, #0a1220 14px, #fbbf24 14px, #fbbf24 28px); }
+.hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    #0a1220 0,
+    #0a1220 14px,
+    #fbbf24 14px,
+    #fbbf24 28px
+  );
+}
 `;
