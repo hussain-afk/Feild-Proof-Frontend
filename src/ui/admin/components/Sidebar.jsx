@@ -53,6 +53,7 @@ function AdminSidebar() {
     { id: "users", label: "Users", path: "/admin/users", icon: Users, end: false },
     { id: "requests", label: "Manager Requests", path: "/admin/requests", icon: Users, end: false },
     { id: "profile", label: "Profile", path: `/admin/me/${user?._id}`, icon: UserCircle, end: false },
+    { id: "maintenance", label: "Maintenance", path: "/admin/maintenance", icon: ShieldCheck, end: false },
   ];
 
   // On desktop the sidebar can be collapsed; on mobile it is always full width

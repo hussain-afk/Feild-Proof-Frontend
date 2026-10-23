@@ -1,9 +1,8 @@
-import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense, useContext } from "react";
-import {context} from '../context/context.jsx'
-import { Navigate } from 'react-router-dom'
-import useAuth from '../hooks/useAuth.jsx'
-import LoadingState from '../ui/LoadingState.jsx'
+import { Navigate, Route, Routes } from "react-router-dom";
+import { context } from "../context/context.jsx";
+import useAuth from "../hooks/useAuth.jsx";
+import LoadingState from "../ui/LoadingState.jsx";
 
 // Every page is loaded only when the user opens it (each one becomes its own small file)
 const AuthPage = lazy(() => import('../ui/AuthPage.jsx'))
@@ -21,6 +20,7 @@ const LandingPage = lazy(() => import('../ui/LandingPage.jsx'))
 const PendingPage = lazy(() => import('../ui/pendingManager/Pending.jsx'))
 const AllRequests = lazy(() => import('../ui/admin/pages/AllRequests.jsx'))
 const BannedPage = lazy(() => import('../ui/banned/Banned.jsx'))
+const MaintenanceSettings = lazy(() => import('../ui/admin/pages/MaintenanceSettingPage.jsx'))
 
 // Shows the loading state while the page file is downloading
 const Page = ({ children }) => (
@@ -70,7 +70,7 @@ const Routing = () => {
             <Route path="/" element={<Page><LandingPage /></Page>} />
             <Route path="/banned" element={<BannedProtectedRoute user={user}><Page><BannedPage onLogout={logout} /></Page></BannedProtectedRoute>} />
             <Route path="/pending" element={<PendingProtectedRoute user={user}><Page><PendingPage /></Page></PendingProtectedRoute>} />
-            <Route path="/auth" element={<Page><AuthProtectedRoute><AuthPage /></AuthProtectedRoute></Page>} />
+            <Route path="/auth" element={<Page><AuthProtectedRoute user={user}><AuthPage /></AuthProtectedRoute></Page>} />
             <Route path="/worker" element={<RoleProtectedRoute user={user} role="worker"><Page><WorkerRootLayout /></Page></RoleProtectedRoute>} >
                 <Route index element={<Page><WorkerDashboard /></Page>} />
                 <Route path="reviewed" element={<Page><ReviewedTasks /></Page>} />
@@ -85,6 +85,7 @@ const Routing = () => {
             <Route path="/admin" element={<AdminProtectedRoute user={user}><Page><AdminRootLayout /></Page></AdminProtectedRoute>} >
                 <Route index element={<Page><AdminDashboard /></Page>} />
                 <Route path="users" element={<Page><AdminUsersPage /></Page>} />
+                <Route path="maintenance" element={<Page><MaintenanceSettings /></Page>} />
                 <Route path="requests" element={<Page><AllRequests /></Page>} />
                 <Route path="me/:id" element={<AdminProtectedRoute user={user}><Page><ProfilePage /></Page></AdminProtectedRoute>} />
             </Route>
