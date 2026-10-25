@@ -64,6 +64,15 @@ export const getMyWorkers = async () => {
     }
 }
 
+export const getAvailableWorkers = async () => {
+    try {
+        const res = await api.get("/available-workers");
+        return res.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
 export const updatePaymentMethod = async (userId, paymentData) => {
     console.log("Updating payment method for user:", userId, "with data:", paymentData);
     try {

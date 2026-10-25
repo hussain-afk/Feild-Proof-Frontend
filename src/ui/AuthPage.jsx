@@ -49,14 +49,6 @@ const FIELDS = {
     type: "password",
     placeholder: "Enter your password",
   },
-  managerId: {
-    label: "Manager ID",
-    icon: ShieldCheck,
-    type: "text",
-    placeholder: "Enter your manager's ID",
-    autoComplete: "off",
-    hint: "Ask your manager for this ID.",
-  },
 };
 
 const MODES = {
@@ -73,10 +65,10 @@ const MODES = {
     tab: "Register",
     icon: UserPlus,
     title: "Create your account",
-    text: "Register to join an existing manager's team.",
+    text: "Register as a worker. A manager can invite you to their team later.",
     button: "Create account",
-    fields: ["name", "email", "password", "managerId"],
-    successText: "Registration submitted successfully.",
+    fields: ["name", "email", "password"],
+    successText: "Registration successful. You can sign in now.",
   },
   managerRequest: {
     tab: "Manager request",
@@ -109,7 +101,7 @@ const FEATURES = [
   },
 ];
 
-const EMPTY_FORM = { name: "", email: "", password: "", managerId: "" };
+const EMPTY_FORM = { name: "", email: "", password: "" };
 
 const inputClass =
   "h-11 w-full rounded-xl border border-slate-800/80 bg-[#0a0f1a] pl-11 pr-4 text-sm text-slate-200 outline-none placeholder:text-slate-600 transition-all duration-200 hover:border-slate-700 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/15";
@@ -229,7 +221,7 @@ function AuthPage() {
   const switchMode = (key) => {
     setAuthMode(key);
     setNotice(null);
-    setForm((prev) => ({ ...prev, password: "", managerId: "" }));
+    setForm((prev) => ({ ...prev, password: "" }));
   };
 
   const handleSubmit = async (event) => {
@@ -240,7 +232,6 @@ function AuthPage() {
       name: form.name.trim(),
       email: form.email.trim(),
       password: form.password,
-      managerId: form.managerId.trim(),
     };
 
     const hasEmptyField = mode.fields.some((key) => !values[key]);
@@ -257,13 +248,8 @@ function AuthPage() {
       }
 
       if (authMode === "signup") {
-        await register(
-          values.name,
-          values.email,
-          values.password,
-          undefined,
-          values.managerId
-        );
+        // No managerId — worker joins a team later via manager invite
+        await register(values.name, values.email, values.password);
       }
 
       if (authMode === "managerRequest") {
@@ -298,7 +284,6 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#070a12] px-4 py-8 text-slate-100">
-      {/* Soft background glows */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 overflow-hidden"
@@ -308,9 +293,7 @@ function AuthPage() {
       </div>
 
       <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0c1220] shadow-2xl shadow-black/40 lg:grid-cols-[1fr_1.1fr]">
-        {/* ================= Left: branding ================= */}
         <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-slate-800/80 bg-gradient-to-br from-sky-950/40 via-[#0c1220] to-[#070a12] p-10 lg:flex">
-          {/* Subtle grid */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -372,15 +355,12 @@ function AuthPage() {
           </p>
         </aside>
 
-        {/* ================= Right: form ================= */}
         <main className="p-6 sm:p-10">
           <div className="mx-auto w-full max-w-md">
-            {/* Logo (mobile) */}
             <div className="mb-8 lg:hidden">
               <Logo />
             </div>
 
-            {/* Tabs */}
             <div
               role="tablist"
               aria-label="Account options"
@@ -412,7 +392,6 @@ function AuthPage() {
               })}
             </div>
 
-            {/* Heading */}
             <div className="mb-7 space-y-1.5">
               <h2 className="text-2xl font-semibold tracking-tight text-white">
                 {mode.title}
@@ -422,7 +401,6 @@ function AuthPage() {
               </p>
             </div>
 
-            {/* Form */}
             <form
               id="auth-form"
               role="tabpanel"
@@ -477,7 +455,6 @@ function AuthPage() {
               </button>
             </form>
 
-            {/* Switch link */}
             <p className="mt-6 text-center text-sm text-slate-500">
               {authMode === "login" ? (
                 <>

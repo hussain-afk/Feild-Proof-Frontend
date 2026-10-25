@@ -53,6 +53,8 @@ function ManagerSidebar() {
     { id: "reviewed", label: "Reviewed tasks", path: "/manager/reviewed", icon: ClipboardCheck, end: false },
     { id: "verification", label: "Verification", path: "/manager/verification", icon: ClipboardCheck, end: false },
     { id: "profile", label: "Profile", path: `/manager/me/${user?._id}`, icon: UserCircle, end: false },
+    { id: "available-workers", label: "Available workers", path: "/manager/available-workers", icon: UserCircle, end: false },
+    { id: "pending-invites", label: "Pending invites", path: "/manager/pending-invites", icon: UserCircle, end: false },
   ];
 
   // On desktop the sidebar can be collapsed; on mobile it is always full width

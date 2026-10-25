@@ -3,11 +3,25 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 import { MailWarning } from "lucide-react";
-import { getCurrentUser, getAllUsers, getMyWorkers } from "../api/auth.api.js";
+
+import {
+  getCurrentUser,
+  getAllUsers,
+  getMyWorkers,
+  getAvailableWorkers,
+} from "../api/auth.api.js";
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
-import { getVerificationStatusAPI, getMyApprovedTasks, getMyRejectedTasks } from "../api/verification.api.js";
+import {
+  getVerificationStatusAPI,
+  getMyApprovedTasks,
+  getMyRejectedTasks,
+} from "../api/verification.api.js";
 import { getAdminInfos, getManagerRequests } from "../api/admin.api.js";
+import {
+  getWorkerInvitations,
+  getManagerInvitations,
+} from "../api/invitation.api.js";
 import { socket } from "../services/socket.js";
 
 import Modal from "../ui/Modal.jsx";
@@ -27,19 +41,15 @@ const getPendingManagerRequests = (requests) =>
       String(request?.status || "pending").toLowerCase() === "pending"
   );
 
-// Add item at the top only if it is not already in the list
 const addIfNew = (list, item) =>
   list.some((x) => getId(x) === getId(item)) ? list : [item, ...list];
 
-// True when two users have exactly the same data (so we do not re-render for nothing)
 const isSameUser = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// Where each role goes after login
 const HOME = { manager: "/manager", admin: "/admin", worker: "/worker" };
 
-// How often we are allowed to do a full refresh (milliseconds)
-const MIN_REFRESH_GAP = 30 * 1000; // when user comes back to the tab
-const FALLBACK_POLL = 60 * 1000; // only used if the socket is disconnected
+const MIN_REFRESH_GAP = 30 * 1000;
+const FALLBACK_POLL = 60 * 1000;
 
 /* ------------------------------------------------------------------ */
 /* Provider                                                             */
@@ -52,36 +62,38 @@ const ContextProvider = ({ children }) => {
   // STATES
   // =========================
   const [user, setUser] = useState(null);
-  const [allUsers, setAllUsers] = useState([]); // only the admin loads this list now
+  const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [adminInfos, setAdminInfos] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [verificationStatus, setVerificationStatus] = useState([]);
   const [managerRequests, setManagerRequests] = useState([]);
-  const [myWorkers, setMyWorkers] = useState([]); // the workers of this manager
-  const [myApprovedTasks, setMyApprovedTasks] = useState([]); // approved tasks (manager and worker)
-  const [myRejectedTasks, setMyRejectedTasks] = useState([]); // rejected tasks (manager and worker)
+  const [myWorkers, setMyWorkers] = useState([]);
+  const [myApprovedTasks, setMyApprovedTasks] = useState([]);
+  const [myRejectedTasks, setMyRejectedTasks] = useState([]);
+  const [availableWorkers, setAvailableWorkers] = useState([]);
+  const [myInvitations, setMyInvitations] = useState([]);
+  const [managerInvitations, setManagerInvitations] = useState([]);
 
-  // Only controls the "verify your email" warning modal
+  // console.log(availableWorkers," availableWorkers");
+  // console.log(managerInvitations," managerInvitations");
+  // console.log(myInvitations," myInvitations");
+
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
-
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // The effects below only need the id and the role of the user.
-  // Using these (and not the whole `user` object) means a small change in the user
-  // (for example a manager request being approved) does NOT disconnect the socket.
   const userId = user?._id || user?.id;
   const role = user?.role;
 
-  const isFetchingRef = useRef(false); // stops two refreshes running together
-  const lastFetchRef = useRef(0); // time of the last full fetch
-  const verifyModalShownRef = useRef(false); // warning modal is shown only ONE time
-  const roleRef = useRef(null); // always the latest role (used inside async code)
-  const prevUserIdRef = useRef(null); // to notice a logout
-  const navigateRef = useRef(navigate); // `navigate` changes on every page change, so keep it here
+  const isFetchingRef = useRef(false);
+  const lastFetchRef = useRef(0);
+  const verifyModalShownRef = useRef(false);
+  const roleRef = useRef(null);
+  const prevUserIdRef = useRef(null);
+  const navigateRef = useRef(navigate);
 
   useEffect(() => {
     navigateRef.current = navigate;
@@ -92,9 +104,7 @@ const ContextProvider = ({ children }) => {
   }, [role]);
 
   // =========================
-  // APPROVED + REJECTED TASKS (manager and worker)
-  // This function NEVER throws. If one of the two requests fails, the other list
-  // still loads, and the rest of the dashboard data is not affected.
+  // APPROVED + REJECTED TASKS
   // =========================
   const fetchReviewedTasks = useCallback(async () => {
     const [approved, rejected] = await Promise.allSettled([
@@ -102,45 +112,53 @@ const ContextProvider = ({ children }) => {
       getMyRejectedTasks(),
     ]);
 
-    if (approved.status === "fulfilled") setMyApprovedTasks(approved.value || []);
-    else console.error("Could not load approved tasks:", approved.reason);
+    if (approved.status === "fulfilled") {
+      setMyApprovedTasks(approved.value || []);
+    } else {
+      console.error("Could not load approved tasks:", approved.reason);
+    }
 
-    if (rejected.status === "fulfilled") setMyRejectedTasks(rejected.value || []);
-    else console.error("Could not load rejected tasks:", rejected.reason);
+    if (rejected.status === "fulfilled") {
+      setMyRejectedTasks(rejected.value || []);
+    } else {
+      console.error("Could not load rejected tasks:", rejected.reason);
+    }
   }, []);
 
   // =========================
-  // ONE PLACE TO FETCH DATA FOR EACH ROLE
-  // (used by first load, tab focus, socket reconnect and role change)
-  // NOTE: this function must NOT open any modal
-  //
-  // IMPORTANT: the names in the [ ... ] on the left must be in the SAME ORDER as the
-  // requests inside Promise.all on the right. If you remove (or add) a request,
-  // remove (or add) its name too. Otherwise every list gets the data of the one before it.
+  // ROLE DATA
   // =========================
   const fetchRoleData = useCallback(
     async (userRole) => {
+      if (!userRole) return;
+
       if (userRole === "manager") {
-        // Promise.all runs the requests together instead of one by one
-        const [tasks, verifications, workers] = await Promise.all([
-          getAllTasks(),
-          getVerificationStatusAPI(),
-          getMyWorkers(),
-          fetchReviewedTasks(), // approved + rejected (sets its own state)
-        ]);
+        const [tasks, verifications, workers, freeWorkers, invites] =
+          await Promise.all([
+            getAllTasks(),
+            getVerificationStatusAPI(),
+            getMyWorkers(),
+            getAvailableWorkers(),
+            getManagerInvitations(),
+          ]);
         setAllTasks(tasks || []);
         setVerificationStatus(verifications || []);
         setMyWorkers(workers || []);
+        setAvailableWorkers(freeWorkers || []);
+        setManagerInvitations(invites || []);
+        await fetchReviewedTasks();
       }
 
       if (userRole === "worker") {
-        const [tasks, list] = await Promise.all([
+        const [tasks, list, invites] = await Promise.all([
           getMyTasks(),
           getNotifications(),
-          fetchReviewedTasks(), // approved + rejected (sets its own state)
+          getWorkerInvitations(),
         ]);
         setMyTasks(tasks || []);
         setNotifications(list || []);
+        setMyInvitations(invites || []);
+        await fetchReviewedTasks();
       }
 
       if (userRole === "admin") {
@@ -160,11 +178,7 @@ const ContextProvider = ({ children }) => {
   );
 
   // =========================
-  // KEEP THE CURRENT USER UP TO DATE
-  // - `partial`: new data of the user that came with a socket event (merged into the user)
-  // - no `partial`: ask the server for the user again
-  // If the role changed (for example worker -> manager after approval),
-  // the data of the new role is loaded too.
+  // SYNC USER
   // =========================
   const syncUser = useCallback(
     async (partial) => {
@@ -177,7 +191,7 @@ const ContextProvider = ({ children }) => {
           return isSameUser(prev, next) ? prev : next;
         });
 
-        const newRole = (partial || fresh).role;
+        const newRole = (partial || fresh)?.role;
         if (newRole && newRole !== roleRef.current) {
           roleRef.current = newRole;
           await fetchRoleData(newRole);
@@ -201,8 +215,6 @@ const ContextProvider = ({ children }) => {
     }
   }, [role, fetchRoleData, syncUser]);
 
-  // Use these right after your own create/delete API call succeeds,
-  // so your screen updates instantly without waiting for the socket
   const addTask = useCallback((task) => {
     if (task && getId(task)) setAllTasks((old) => addIfNew(old, task));
   }, []);
@@ -214,50 +226,58 @@ const ContextProvider = ({ children }) => {
   }, []);
 
   // =========================
-  // LOAD DATA WHEN APP STARTS (runs once)
+  // INITIAL LOAD
   // =========================
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
       try {
         setIsLoading(true);
 
         const currentUser = await getCurrentUser();
+        if (cancelled) return;
+
         setUser(currentUser);
 
         if (!currentUser) return;
+
         if (currentUser.isBanned) {
-          // Handle banned user
           toast.error("Your account has been banned. Please contact support.");
           navigateRef.current("/banned");
+          return;
         }
 
         await fetchRoleData(currentUser.role);
+        if (cancelled) return;
 
-        // Show the verification warning only ONE time (not on every reload of data)
-        if (currentUser.isVerified === false && !verifyModalShownRef.current) {
+        if (
+          currentUser.isVerified === false &&
+          !verifyModalShownRef.current
+        ) {
           verifyModalShownRef.current = true;
           setIsVerifyModalOpen(true);
         }
 
-        // Send the user to their own dashboard if they are on "/auth"
         if (window.location.pathname === "/auth" && HOME[currentUser.role]) {
           navigateRef.current(HOME[currentUser.role]);
         }
       } catch (error) {
         console.error("Data loading error:", error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [fetchRoleData]);
 
   // =========================
-  // SMALL CLEAN-UPS
+  // LOGOUT CLEANUP
   // =========================
-
-  // After logout: remove the data of the old user from memory
   useEffect(() => {
     if (prevUserIdRef.current && !userId) {
       setAllUsers([]);
@@ -270,20 +290,20 @@ const ContextProvider = ({ children }) => {
       setMyWorkers([]);
       setMyApprovedTasks([]);
       setMyRejectedTasks([]);
+      setAvailableWorkers([]);
+      setMyInvitations([]);
+      setManagerInvitations([]);
     }
     prevUserIdRef.current = userId || null;
   }, [userId]);
 
-  // Once the email is verified (maybe in another tab), close the warning
   useEffect(() => {
-    // This intentionally closes local UI state in response to external user state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user?.isVerified) setIsVerifyModalOpen(false);
   }, [user?.isVerified]);
 
   // =========================
-  // SYNC WHEN USER RETURNS TO THE TAB
-  // (replaces the 3 second polling)
+  // TAB FOCUS / FALLBACK
   // =========================
   useEffect(() => {
     if (!userId) return;
@@ -297,7 +317,6 @@ const ContextProvider = ({ children }) => {
     document.addEventListener("visibilitychange", syncIfStale);
     window.addEventListener("focus", syncIfStale);
 
-    // Safety net: poll slowly, but ONLY when the socket is down and the tab is open
     const fallback = setInterval(() => {
       if (!socket.connected && document.visibilityState === "visible") {
         refresh();
@@ -312,19 +331,16 @@ const ContextProvider = ({ children }) => {
   }, [userId, refresh]);
 
   // =========================
-  // SOCKET.IO (real-time updates)
+  // SOCKET.IO
   // =========================
   useEffect(() => {
     if (!userId) return;
 
-    // Rooms are lost when the socket reconnects, so join on every "connect"
     const handleConnect = () => {
       socket.emit("join_room", userId);
-      // We may have missed events while offline, so sync once (skip if just fetched)
       if (Date.now() - lastFetchRef.current > 5000) refresh();
     };
 
-    // ---- New task ----
     const handleNewTask = (data = {}) => {
       const newTask = data.task || data.data;
 
@@ -340,14 +356,12 @@ const ContextProvider = ({ children }) => {
       toast.success(data.message || "New task assigned!");
     };
 
-    // If an event arrives without usable data, just reload (debounced)
     let softTimer;
     const softRefresh = () => {
       clearTimeout(softTimer);
       softTimer = setTimeout(refresh, 400);
     };
 
-    // ---- Task created (manager/admin lists) ----
     const handleTaskCreated = (data = {}) => {
       const newTask = data.task || data.data;
       if (newTask && getId(newTask)) {
@@ -357,20 +371,20 @@ const ContextProvider = ({ children }) => {
       }
     };
 
-    // ---- Task updated ----
     const handleTaskUpdate = (data = {}) => {
       const updated = data.task || data.data || data;
       const taskId = getId(updated);
       if (!taskId) return softRefresh();
 
       const merge = (old) =>
-        old.map((task) => (getId(task) === taskId ? { ...task, ...updated } : task));
+        old.map((task) =>
+          getId(task) === taskId ? { ...task, ...updated } : task
+        );
 
       setAllTasks(merge);
       setMyTasks(merge);
     };
 
-    // ---- Task deleted ----
     const handleTaskDelete = (data = {}) => {
       const taskId = data.taskId || data.id || getId(data.task);
       if (!taskId) return softRefresh();
@@ -380,7 +394,6 @@ const ContextProvider = ({ children }) => {
       setMyTasks(remove);
     };
 
-    // ---- New notification (without a new task) ----
     const handleNotification = (data = {}) => {
       const notification = data.notification || data;
       if (getId(notification)) {
@@ -388,27 +401,20 @@ const ContextProvider = ({ children }) => {
       }
     };
 
-    // ---- My own account changed (for example my manager request was approved or rejected) ----
-    // The server sends this to the user's room. If it brings the new user data we use it,
-    // otherwise we ask the server for the user.
     const handleUserUpdated = (data = {}) => {
       if (data.user?.isBanned) {
         setUser(data.user);
         navigateRef.current("/banned");
         return;
       }
-
       syncUser(data.user);
     };
 
-    // ---- Targeted refetch: reload ONLY the one thing that changed ----
-    // Every debounced function has its OWN timer, so two different events
-    // that come close together do not cancel each other.
     const debounce = (fn) => {
       let t;
       const run = () => {
         clearTimeout(t);
-        t = setTimeout(fn, 500); // many events in a row become 1 request
+        t = setTimeout(fn, 500);
       };
       run.cancel = () => clearTimeout(t);
       return run;
@@ -422,8 +428,6 @@ const ContextProvider = ({ children }) => {
       }
     });
 
-    // Manager: the list of my workers changed (a worker joined my team, left, or was updated).
-    // Only this one list is reloaded.
     const reloadMyWorkers = debounce(async () => {
       try {
         setMyWorkers((await getMyWorkers()) || []);
@@ -432,12 +436,36 @@ const ContextProvider = ({ children }) => {
       }
     });
 
-    // Admin dashboard: the activity log and the manager requests reload together,
-    // so whichever event comes ("admin_info_updated" or "manager_requests_updated"),
-    // both lists are up to date.
+    const reloadAvailableWorkers = debounce(async () => {
+      try {
+        setAvailableWorkers((await getAvailableWorkers()) || []);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    const reloadWorkerInvitations = debounce(async () => {
+      try {
+        setMyInvitations((await getWorkerInvitations()) || []);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    const reloadManagerInvitations = debounce(async () => {
+      try {
+        setManagerInvitations((await getManagerInvitations()) || []);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
     const reloadAdminData = debounce(async () => {
       try {
-        const [infos, requests] = await Promise.all([getAdminInfos(), getManagerRequests()]);
+        const [infos, requests] = await Promise.all([
+          getAdminInfos(),
+          getManagerRequests(),
+        ]);
         setAdminInfos(infos || []);
         setManagerRequests(getPendingManagerRequests(requests));
       } catch (e) {
@@ -445,12 +473,10 @@ const ContextProvider = ({ children }) => {
       }
     });
 
-    // ---- Connect and listen ----
     socket.on("connect", handleConnect);
     socket.connect();
     if (socket.connected) handleConnect();
 
-    // Dev only: prints every socket event in the browser console (for debugging)
     const logEvent = (event, ...args) => console.log("[socket]", event, args);
     if (import.meta.env?.DEV) socket.onAny(logEvent);
 
@@ -458,42 +484,63 @@ const ContextProvider = ({ children }) => {
     socket.on("new_notification", handleNotification);
     socket.on("user_updated", handleUserUpdated);
 
-    const updateEvents = ["task_updated", "task_status_updated", "task_updated_by_worker"];
+    const updateEvents = [
+      "task_updated",
+      "task_status_updated",
+      "task_updated_by_worker",
+    ];
     const deleteEvents = ["task_deleted", "task_removed"];
 
     socket.on("task_created", handleTaskCreated);
     updateEvents.forEach((e) => socket.on(e, handleTaskUpdate));
     deleteEvents.forEach((e) => socket.on(e, handleTaskDelete));
 
-    // Manager: a worker checked in/out or proof changed, or my workers list changed
     if (role === "manager") {
       socket.on("verification_updated", reloadVerifications);
       socket.on("my_workers_updated", reloadMyWorkers);
+      socket.on("available_workers_updated", reloadAvailableWorkers);
+      socket.on("manager_invites_updated", reloadManagerInvitations);
+      socket.on("invite_updated", reloadManagerInvitations);
     }
-    // Admin: a new activity log row was saved, or a manager request changed
+
+    if (role === "worker") {
+      socket.on("invite_received", reloadWorkerInvitations);
+      socket.on("invite_updated", reloadWorkerInvitations);
+    }
+
     if (role === "admin") {
       socket.on("admin_info_updated", reloadAdminData);
       socket.on("manager_requests_updated", reloadAdminData);
     }
 
-    // ---- Cleanup ----
     return () => {
       reloadVerifications.cancel();
       reloadMyWorkers.cancel();
+      reloadAvailableWorkers.cancel();
+      reloadWorkerInvitations.cancel();
+      reloadManagerInvitations.cancel();
       reloadAdminData.cancel();
       clearTimeout(softTimer);
-      socket.offAny(logEvent);
-      socket.off("task_created", handleTaskCreated);
+
+      if (import.meta.env?.DEV) socket.offAny(logEvent);
+
       socket.off("connect", handleConnect);
       socket.off("new_task_assigned", handleNewTask);
       socket.off("new_notification", handleNotification);
       socket.off("user_updated", handleUserUpdated);
+      socket.off("task_created", handleTaskCreated);
       updateEvents.forEach((e) => socket.off(e, handleTaskUpdate));
       deleteEvents.forEach((e) => socket.off(e, handleTaskDelete));
       socket.off("verification_updated", reloadVerifications);
       socket.off("my_workers_updated", reloadMyWorkers);
+      socket.off("available_workers_updated", reloadAvailableWorkers);
+      socket.off("manager_invites_updated", reloadManagerInvitations);
+      socket.off("invite_updated", reloadManagerInvitations);
+      socket.off("invite_received", reloadWorkerInvitations);
+      socket.off("invite_updated", reloadWorkerInvitations);
       socket.off("admin_info_updated", reloadAdminData);
       socket.off("manager_requests_updated", reloadAdminData);
+
       socket.disconnect();
     };
   }, [userId, role, refresh, syncUser]);
@@ -547,7 +594,15 @@ const ContextProvider = ({ children }) => {
           myRejectedTasks,
           setMyRejectedTasks,
 
-          // Handy for a "Refresh" button
+          availableWorkers,
+          setAvailableWorkers,
+
+          myInvitations,
+          setMyInvitations,
+
+          managerInvitations,
+          setManagerInvitations,
+
           refresh,
           syncUser,
           addTask,
@@ -563,30 +618,34 @@ const ContextProvider = ({ children }) => {
         isOpen={isVerifyModalOpen}
         onClose={() => setIsVerifyModalOpen(false)}
         title="Verify your email"
+        subtitle="Confirm your email to unlock all features."
       >
         <div className="flex flex-col items-center text-center">
-          {/* Icon */}
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10">
             <MailWarning className="h-7 w-7 text-sky-400" />
           </div>
 
-          {/* Message */}
-          <h2 className="text-lg font-semibold text-white">Email verification required</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Email verification required
+          </h2>
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-400">
-            Please verify your email address to unlock all features of your account. Go to your
-            profile to verify.
+            Please verify your email address to unlock all features of your
+            account. Go to your profile to verify.
           </p>
 
-          {/* Hint box */}
           <div className="mt-5 w-full rounded-xl border border-slate-800 bg-[#0b1220] px-4 py-3 text-left">
-            <p className="text-xs font-medium text-slate-300">Can't find the email?</p>
+            <p className="text-xs font-medium text-slate-300">
+              Can&apos;t find the email?
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Check spam/junk, or resend the code from your profile.
+            </p>
           </div>
 
-          {/* Button */}
           <button
             type="button"
             onClick={() => setIsVerifyModalOpen(false)}
-            className="mt-5 h-10 w-full rounded-lg bg-sky-600 text-sm font-medium text-white transition hover:bg-sky-500"
+            className="mt-5 h-11 w-full rounded-xl bg-sky-600 text-sm font-medium text-white transition hover:bg-sky-500"
           >
             Got it
           </button>
