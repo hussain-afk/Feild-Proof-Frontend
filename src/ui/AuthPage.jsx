@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import useAuth from "../hooks/useAuth";
 import { context } from "../context/context.jsx";
+import feildproofLogo from "../assets/fieldproof-logo.png";
 import {
   ShieldCheck,
   Mail,
@@ -113,7 +114,7 @@ const inputClass =
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/25">
+      {/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/25">
         <ShieldCheck className="h-5 w-5" />
       </div>
       <div className="leading-tight">
@@ -123,7 +124,8 @@ function Logo() {
         <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           Workforce platform
         </p>
-      </div>
+      </div> */}
+      <img src={feildproofLogo} alt="FieldProof Logo" className="h-20 w-auto" />
     </div>
   );
 }

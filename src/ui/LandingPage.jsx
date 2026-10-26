@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import feildprooflogo from "../assets/fieldproof-logo.png";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -452,12 +453,13 @@ function SectionHeading({ eyebrow, title, text, className = "" }) {
 function Logo() {
   return (
     <a href="#top" className="flex items-center gap-2.5" aria-label="FieldProof home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.35)]">
+      {/* <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.35)]">
         <ShieldCheck className="h-5 w-5" strokeWidth={2.4} />
       </span>
       <span className="font-display text-xl font-bold tracking-tight">
         FieldProof
-      </span>
+      </span> */}
+      <img src={feildprooflogo} alt="FieldProof Logo" className="h-12 w-auto" />
     </a>
   );
 }

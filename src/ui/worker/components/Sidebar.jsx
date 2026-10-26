@@ -1,4 +1,5 @@
 import { useState, useContext, useEffect, useMemo } from "react";
+import feildproofLogo from "../../../assets/fieldproof-logo.png";
 import {
   CheckSquare,
   UserCircle,
@@ -124,13 +125,14 @@ function WorkerSidebar() {
       {/* Mobile top bar */}
       <div className="sticky top-0 z-40 flex w-full items-center justify-between border-b border-slate-800/80 bg-[#0a0f1a]/90 px-4 py-3 backdrop-blur-md lg:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/20">
+          {/* <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/20">
             <ShieldCheck className="h-4 w-4" />
           </div>
           <div className="leading-tight">
             <p className="text-sm font-semibold text-white">FieldProof</p>
             <p className="text-[11px] text-slate-500">Worker</p>
-          </div>
+          </div> */}
+          <img src={feildproofLogo} alt="FieldProof Logo" className="h-10 w-auto" />
         </div>
 
         <button
@@ -177,12 +179,13 @@ function WorkerSidebar() {
           </div>
           {showLabels && (
             <div className="min-w-0 leading-tight">
-              <h1 className="truncate text-[15px] font-semibold tracking-tight text-white">
+              {/* <h1 className="truncate text-[15px] font-semibold tracking-tight text-white">
                 FieldProof
               </h1>
               <p className="text-[11px] font-medium text-slate-500">
                 Worker portal
-              </p>
+              </p> */}
+              <img src={feildproofLogo} alt="FieldProof Logo" className="h-10 w-auto" />
             </div>
           )}
           <button
