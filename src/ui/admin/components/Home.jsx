@@ -217,20 +217,6 @@ function DayHeader({ label, count }) {
   );
 }
 
-function LoadingRows() {
-  return (
-    <div className="divide-y divide-slate-800/60" aria-busy="true">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <div key={n} className="flex animate-pulse items-center gap-3 px-6 py-4">
-          <div className="h-9 w-9 rounded-xl bg-slate-800/80" />
-          <div className="h-3 flex-1 rounded-full bg-slate-800/80" />
-          <div className="hidden h-3 w-24 rounded-full bg-slate-800/80 md:block" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function EmptyState({ isFiltering, onClear }) {
   return (
     <div className="flex flex-col items-center px-6 py-20 text-center">
@@ -448,9 +434,7 @@ const Home = () => {
             <span>Time</span>
           </div>
 
-          {isLoading && activities.length === 0 ? (
-            <LoadingRows />
-          ) : visibleActivities.length > 0 ? (
+          {visibleActivities.length > 0 ? (
             <div className="max-h-[calc(100vh-420px)] min-h-[300px] overflow-y-auto">
               {groups.map((group) => (
                 <section key={group.label}>

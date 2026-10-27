@@ -276,7 +276,7 @@ function WorkerDashboard() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#0b0f17] text-slate-100">
+      <div className="min-h-full text-slate-100">
         <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
           {/* ================= HEADER ================= */}
           <header className="flex items-start justify-between gap-4">
@@ -468,7 +468,7 @@ function WorkerDashboard() {
             </div>
 
             {tasks.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
                 {tasks.map((task) => (
                   <WorkerTaskCard
                     key={task._id}

@@ -4,17 +4,27 @@ import { Mail, Check, X, Loader2, AlertCircle, Clock, Users } from "lucide-react
 import useInvitation from "../../../hooks/useInvitation";
 import { Avatar, StatusBadge, PageHeader, EmptyState, SearchBox } from "../../Inviteparts";
 import { formatTimeAgo, newestFirst } from "../../../utils/inviteUtils";
+import LoadingState from "../../LoadingState.jsx";
 
 // Show the search box only when the list is long
 const SEARCH_FROM = 6;
 
 function MyInvites() {
-  const { myInvitations } = useContext(context);
+  const { myInvitations, isLoading } = useContext(context);
   const { handleAcceptInvite, handleRejectInvite } = useInvitation();
 
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(null); // { id, action } while the server answers
   const [error, setError] = useState("");
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading invites"
+        subtext="Syncing your team invitations"
+      />
+    );
+  }
 
   const list = Array.isArray(myInvitations) ? myInvitations : [];
 
@@ -43,7 +53,7 @@ function MyInvites() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] p-4 text-slate-100 sm:p-6 lg:p-8">
+    <div className="min-h-full p-4 text-slate-100 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <PageHeader
           icon={Mail}

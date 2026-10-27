@@ -1,9 +1,9 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import useAuth from "../hooks/useAuth";
+import { useContext } from "react";
 import { context } from "../context/context.jsx";
 import feildproofLogo from "../assets/fieldproof-logo.png";
 import {
-  ShieldCheck,
   Mail,
   Lock,
   User,

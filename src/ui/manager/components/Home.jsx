@@ -266,15 +266,15 @@ function Home() {
   if (isLoading) {
     return (
       <LoadingState
-        message="Loading tasks"
-        subtext="Syncing your workspace"
+        message="Loading workspace"
+        subtext="Syncing your field operations"
       />
     );
   }
 
   return (
     <>
-      <div className="min-h-screen bg-[#0b0f17] text-slate-100">
+      <div className="min-h-full text-slate-100">
         <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           {/* ================= HEADER ================= */}
           <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
@@ -412,7 +412,7 @@ function Home() {
                 }}
               />
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
                 {visibleTasks.map((taskItem) => (
                   <ManagerTaskCard
                     key={taskItem._id || taskItem.id}

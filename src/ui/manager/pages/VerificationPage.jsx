@@ -34,7 +34,7 @@ function VerificationPage() {
     return (
       <LoadingState
         message="Loading verifications"
-        subtext="Syncing worker submissions"
+        subtext="Syncing verification requests"
       />
     );
   }

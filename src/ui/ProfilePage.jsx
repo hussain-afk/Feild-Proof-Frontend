@@ -243,7 +243,7 @@ const ProfilePage = () => {
                     type="file"
                     accept="image/*"
                     onChange={handleAvatarChange}
-                    className="sr-only"
+                    className="hidden"
                   />
                 </label>
               </div>

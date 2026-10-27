@@ -3,6 +3,7 @@ import { context } from "../../../context/context";
 import { Send, Mail, Clock, XCircle } from "lucide-react";
 import { Avatar, StatusBadge, PageHeader, EmptyState, SearchBox } from "../../Inviteparts";
 import { formatTimeAgo, newestFirst } from "../../../utils/inviteUtils";
+import LoadingState from "../../LoadingState.jsx";
 
 // Show the search box only when the list is long
 const SEARCH_FROM = 6;
@@ -11,8 +12,17 @@ const SEARCH_FROM = 6;
 const CAN_CANCEL = false;
 
 function PendingInvites() {
-  const { managerInvitations } = useContext(context);
+  const { managerInvitations, isLoading } = useContext(context);
   const [search, setSearch] = useState("");
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading pending invites"
+        subtext="Syncing your team invitations"
+      />
+    );
+  }
 
   const list = Array.isArray(managerInvitations) ? managerInvitations : [];
 
@@ -29,7 +39,7 @@ function PendingInvites() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] p-4 text-slate-100 sm:p-6 lg:p-8">
+    <div className="min-h-full p-4 text-slate-100 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <PageHeader
           icon={Send}

@@ -17,6 +17,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import LoadingState from "../../LoadingState.jsx";
 
 import {
   getMaintenanceStatus,
@@ -90,27 +91,6 @@ function useNow(enabled) {
 /* ------------------------------------------------------------------ */
 /* Small components                                                     */
 /* ------------------------------------------------------------------ */
-
-// Grey boxes shown while the page loads (same shape as the real page)
-function LoadingSkeleton() {
-  return (
-    <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-10 lg:py-10" aria-busy="true">
-      <div className="mx-auto max-w-6xl animate-pulse space-y-8">
-        <div className="space-y-3">
-          <div className="h-5 w-40 rounded-full bg-white/[0.06]" />
-          <div className="h-10 w-72 rounded-xl bg-white/[0.06]" />
-          <div className="h-4 w-96 max-w-full rounded-lg bg-white/[0.04]" />
-        </div>
-        <div className="h-52 rounded-3xl bg-white/[0.04]" />
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="h-96 rounded-3xl bg-white/[0.04]" />
-          <div className="h-96 rounded-3xl bg-white/[0.04]" />
-        </div>
-      </div>
-      <p className="sr-only">Loading maintenance settings</p>
-    </main>
-  );
-}
 
 // The big status card at the top, with a live countdown while maintenance is active
 function StatusHero({ status, now, sessionStart, lastUpdated }) {
@@ -473,11 +453,11 @@ function ConfirmDialog({ confirm, minutes, message, busy, onCancel, onConfirm })
 export default function MaintenanceSettings() {
   const [status, setStatus] = useState(null);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [choice, setChoice] = useState("60"); // "30" | "60" | "120" | "until" | "custom"
   const [customMinutes, setCustomMinutes] = useState("45");
@@ -540,6 +520,15 @@ export default function MaintenanceSettings() {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  if (loading) {
+    return (
+      <LoadingState
+        message="Loading maintenance settings"
+        subtext="Checking platform status"
+      />
+    );
+  }
+
   /* ---------- Turn on / off ---------- */
   const applyChange = async () => {
     const enabling = Boolean(confirm?.enabling);
@@ -574,10 +563,8 @@ export default function MaintenanceSettings() {
     }
   };
 
-  if (loading) return <LoadingSkeleton />;
-
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-8 text-white sm:px-6 lg:px-10 lg:py-10">
+    <div className="relative min-h-full overflow-hidden px-4 py-8 text-white sm:px-6 lg:px-10 lg:py-10">
       {/* Background glow */}
       {/* <div className="pointer-events-none absolute -top-40 right-0 h-96 w-96 rounded-full bg-sky-500/[0.08] blur-[120px]" />
       <div className="pointer-events-none absolute bottom-0 left-0 h-80 w-80 rounded-full bg-indigo-500/[0.06] blur-[110px]" /> */}
@@ -776,6 +763,6 @@ export default function MaintenanceSettings() {
         onCancel={() => setConfirm(null)}
         onConfirm={applyChange}
       />
-    </main>
+    </div>
   );
 }

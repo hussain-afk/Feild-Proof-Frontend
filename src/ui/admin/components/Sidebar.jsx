@@ -130,7 +130,7 @@ function AdminSidebar() {
             <p className="text-sm font-semibold text-white">FieldProof</p>
             <p className="text-[11px] text-slate-500">Admin</p>
           </div> */}
-          <img src={feildproofLogo} alt="FieldProof Logo" className="h-8 w-auto" />
+          <img src={feildproofLogo} alt="FieldProof Logo" className="h-10 w-auto" />
         </div>
 
         <button

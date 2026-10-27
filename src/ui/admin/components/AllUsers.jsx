@@ -234,8 +234,8 @@ const AllUsers = () => {
   const {
     allUsers = [],
     setAllUsers,
-    user: currentUser,
     isLoading,
+    user: currentUser,
   } = useContext(context);
   const { updateUserProfileByAdmin, handleBanUser } = useAdmin();
   const { deleteUser } = useAuth();
@@ -344,10 +344,7 @@ const AllUsers = () => {
 
   if (isLoading) {
     return (
-      <LoadingState
-        message="Loading users"
-        subtext="Syncing your workspace"
-      />
+      <LoadingState message="Loading users" subtext="Syncing your workspace" />
     );
   }
 

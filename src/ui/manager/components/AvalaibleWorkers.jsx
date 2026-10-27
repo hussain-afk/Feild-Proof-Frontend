@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { context } from "../../../context/context";
 import { BadgeCheck, CalendarDays, Mail, Phone, Search, UserPlus, Users, X } from "lucide-react";
 import useInvitation from "../../../hooks/useInvitation";
+import LoadingState from "../../LoadingState.jsx";
 
 // "Ali Khan" -> "AK"
 const getInitials = (name) =>
@@ -27,10 +28,19 @@ const timeAgo = (date) => {
 };
 
 function AvalaibleWorkers() {
-  const { availableWorkers } = useContext(context);
+  const { availableWorkers, isLoading } = useContext(context);
   const { handleInviteWorker } = useInvitation();
 
   const [search, setSearch] = useState("");
+
+  if (isLoading) {
+    return (
+      <LoadingState
+        message="Loading available workers"
+        subtext="Finding workers for your team"
+      />
+    );
+  }
 
   // API kabhi array deti hai, kabhi { workers: [...] }
   const list = Array.isArray(availableWorkers)
@@ -51,7 +61,7 @@ function AvalaibleWorkers() {
   );
 
   return (
-    <div className="min-h-screen p-4 text-slate-100 sm:p-6 lg:p-8">
+    <div className="min-h-full p-4 text-slate-100 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl">
         {/* ================= Header ================= */}
         <header className="flex flex-wrap items-start justify-between gap-4">

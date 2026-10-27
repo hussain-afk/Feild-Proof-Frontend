@@ -218,7 +218,7 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
   const disabled = isProcessing || isLocked || !imageFile;
 
   return (
-    <div className="group flex w-full max-w-[520px] flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0c1220] transition-all duration-200 hover:border-slate-700/80">
+    <div className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0c1220] transition-all duration-200 hover:border-slate-700/80">
       {/* ================= HEADER ================= */}
       <div className="border-b border-slate-800/80 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
@@ -363,7 +363,17 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
           </p>
 
           {!imageFile ? (
-            <label className="group flex h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-slate-700/80 bg-[#0a0f1a] px-3.5 transition-all hover:border-sky-500/50 focus-within:border-sky-500/60 focus-within:ring-2 focus-within:ring-sky-500/15">
+            <label
+              htmlFor={`task-photo-${task?._id || "worker"}`}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  document.getElementById(`task-photo-${task?._id || "worker"}`)?.click();
+                }
+              }}
+              className="group relative flex h-12 w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-xl border border-dashed border-slate-700/80 bg-[#0a0f1a] px-3.5 transition-all hover:border-sky-500/50 focus-within:border-sky-500/60 focus-within:ring-2 focus-within:ring-sky-500/15 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+            >
               <div className="flex min-w-0 items-center gap-2.5">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10">
                   <Camera className="h-4 w-4 text-sky-400" />
@@ -385,10 +395,11 @@ const WorkerTaskCard = ({ task, onCheckIn, onCheckOut }) => {
               </span>
 
               <input
+                id={`task-photo-${task?._id || "worker"}`}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="sr-only"
+                className="hidden"
               />
             </label>
           ) : (

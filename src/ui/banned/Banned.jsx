@@ -46,6 +46,7 @@ const Banned = ({ onLogout, supportEmail = "https://muhammadhussainmemon.vercel.
           <a
             href={supportEmail}
             target="_blank"
+            rel="noopener noreferrer"
             className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 text-sm font-medium text-slate-200 transition hover:border-sky-500/40 hover:bg-slate-700"
           >
             <Mail className="h-4 w-4" />
