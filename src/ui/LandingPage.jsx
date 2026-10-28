@@ -25,6 +25,8 @@ import {
   Timer,
   Zap,
   KeyRound,
+  Download,
+  Monitor,
 } from "lucide-react";
 
 /**
@@ -43,6 +45,10 @@ gsap.registerPlugin(ScrollTrigger);
 
 const LOGIN_PATH = "/auth";
 const REGISTER_PATH = "/auth";
+
+// TODO: apna GitHub Release .exe link yahan paste karo
+const DOWNLOAD_DESKTOP_URL =
+  "https://github.com/hussain-afk/fieldproof-desktop-releases/releases/download/v1.0.0/FieldProof.Setup.1.0.0.exe";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -65,6 +71,34 @@ const FACTS = [
   { icon: Zap, value: "Live", label: "Updates on every screen" },
   { icon: KeyRound, value: "6-digit code", label: "Email confirmation for workers" },
 ];
+
+// The kinds of work FieldProof is made for (the scrolling strip under the hero)
+const USE_CASES = [
+  "Site inspections",
+  "Meter reading",
+  "Equipment checks",
+  "Safety walks",
+  "Maintenance rounds",
+  "Surveys and deliveries",
+  "Audits",
+  "Generator checks",
+];
+
+// Before and after
+const CONTRAST = {
+  without: [
+    "Calling workers to ask if they reached the site",
+    "Photos lost in chat groups",
+    "Paper sheets and guessed hours",
+    "Arguments about who did what",
+  ],
+  with: [
+    "GPS position checked against your site radius",
+    "Check-in and check-out photos saved with time and position",
+    "Every action written to one timeline",
+    "Proof ready to approve, or reject with a reason",
+  ],
+};
 
 const PROOF = [
   {
@@ -125,6 +159,19 @@ const STEPS = [
     text: "The task turns to in progress on your screen and the proof is waiting when you open it. Checking out closes the visit with a second photo.",
     tag: "Live",
   },
+];
+
+const REVIEW_POINTS = [
+  "Open the check-in and check-out photos side by side",
+  "See the time and the GPS position of each one",
+  "Approve in one tap, or reject with a reason that is required",
+  "Every decision stays in the reviewed history",
+];
+
+const DESKTOP_POINTS = [
+  "Its own window, separate from your browser tabs",
+  "The same login as the website",
+  "Optional: the browser version always works",
 ];
 
 const ROLES = {
@@ -200,7 +247,7 @@ const FAQ = [
   },
   {
     q: "Do workers need to install an app?",
-    a: "No. FieldProof runs in the phone's browser, so workers only need the link and their login.",
+    a: "No. FieldProof runs in the browser on any phone. Managers and office users can optionally install the Windows desktop app from this site for a dedicated window.",
   },
   {
     q: "Who can see the activity log?",
@@ -252,6 +299,7 @@ export default function LandingPage() {
   const [feedActive, setFeedActive] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState("");
+  const [pastHero, setPastHero] = useState(false); // shows the sticky "Get started" bar on phones
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -260,6 +308,14 @@ export default function LandingPage() {
         start: "top -12",
         end: "bottom bottom",
         onToggle: (self) => setScrolled(self.isActive),
+      });
+
+      // After the hero, show the sticky bar (phones only)
+      ScrollTrigger.create({
+        trigger: "#top",
+        start: "bottom 80px",
+        end: "max",
+        onToggle: (self) => setPastHero(self.isActive),
       });
 
       NAV.forEach((item) => {
@@ -301,20 +357,23 @@ export default function LandingPage() {
           .from(".hero-fade", { y: 18, opacity: 0, duration: 0.7, stagger: 0.1 }, "-=0.5")
           .from(".hero-panel", { y: 30, opacity: 0, duration: 0.9 }, "-=0.9");
 
+        // The story in the hero panel: a worker walks in, the stamp lands, the manager approves
         const story = gsap.timeline({ repeat: -1, repeatDelay: 1.4, delay: 1.2 });
         story
           .set(".worker-dot", { x: -130, y: -100, opacity: 0 })
           .set(".stamp", { opacity: 0, scale: 2, rotation: -26 })
           .set(".status-chip", { opacity: 0, y: 8 })
           .set(".photo-card", { opacity: 0, y: 10 })
+          .set(".review-card", { opacity: 0, y: 10 })
           .to(".worker-dot", { opacity: 1, duration: 0.4 })
           .to(".worker-dot", { x: 30, y: 22, duration: 2.6, ease: "power2.inOut" })
           .to(".status-chip", { opacity: 1, y: 0, duration: 0.4 }, "-=0.5")
           .to(".photo-card", { opacity: 1, y: 0, duration: 0.4 }, "-=0.2")
-          .to(".stamp", { opacity: 1, scale: 1, rotate: -10, duration: 0.26, ease: "power4.in" })
+          .to(".stamp", { opacity: 1, scale: 1, rotation: -10, duration: 0.26, ease: "power4.in" })
           .to(".hero-visual", { y: 4, duration: 0.07, yoyo: true, repeat: 1 })
-          .to({}, { duration: 2.4 })
-          .to([".stamp", ".status-chip", ".worker-dot", ".photo-card"], {
+          .to(".review-card", { opacity: 1, y: 0, duration: 0.45 }, "+=0.5")
+          .to({}, { duration: 2 })
+          .to([".stamp", ".status-chip", ".worker-dot", ".photo-card", ".review-card"], {
             opacity: 0,
             duration: 0.5,
           });
@@ -322,14 +381,7 @@ export default function LandingPage() {
         gsap.fromTo(
           ".radar-ring",
           { scale: 0.3, opacity: 0.55 },
-          {
-            scale: 1.5,
-            opacity: 0,
-            duration: 3.4,
-            ease: "power1.out",
-            repeat: -1,
-            stagger: 1.1,
-          }
+          { scale: 1.5, opacity: 0, duration: 3.4, ease: "power1.out", repeat: -1, stagger: 1.1 }
         );
 
         gsap.fromTo(
@@ -339,26 +391,17 @@ export default function LandingPage() {
             scaleY: 1,
             ease: "none",
             transformOrigin: "top",
-            scrollTrigger: {
-              trigger: ".steps",
-              start: "top 60%",
-              end: "bottom 60%",
-              scrub: 0.4,
-            },
+            scrollTrigger: { trigger: ".steps", start: "top 60%", end: "bottom 60%", scrub: 0.4 },
           }
         );
 
         gsap.to(".scroll-progress", {
           scaleX: 1,
           ease: "none",
-          scrollTrigger: {
-            trigger: document.body,
-            start: "top top",
-            end: "bottom bottom",
-            scrub: 0.2,
-          },
+          scrollTrigger: { trigger: document.body, start: "top top", end: "bottom bottom", scrub: 0.2 },
         });
 
+        // Things slide up the first time they are seen (they are never hidden up front, so no empty gaps)
         gsap.utils.toArray(".reveal").forEach((el, i) => {
           gsap.fromTo(
             el,
@@ -394,8 +437,7 @@ export default function LandingPage() {
       ref={rootRef}
       className="min-h-screen bg-[#0a1220] text-[#e8eef7] antialiased selection:bg-sky-400/30"
       style={{
-        fontFamily:
-          "'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
+        fontFamily: "'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
       }}
     >
       <style>{CSS}</style>
@@ -406,25 +448,26 @@ export default function LandingPage() {
 
       <div className="scroll-progress fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-[#38bdf8]" />
 
-      <Header
-        menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
-        scrolled={scrolled}
-        activeNav={activeNav}
-      />
+      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} scrolled={scrolled} activeNav={activeNav} />
 
       <main id="main">
         <Hero />
         <Facts />
+        <UseCases />
+        <Contrast />
         <Proof />
         <HowItWorks />
+        <ReviewFlow />
         <Roles />
+        <DesktopApp />
         <Activity feedActive={feedActive} />
         <Faq />
         <FinalCta />
       </main>
 
       <Footer />
+
+      <StickyCta visible={pastHero && !menuOpen} />
     </div>
   );
 }
@@ -440,12 +483,8 @@ function SectionHeading({ eyebrow, title, text, className = "" }) {
         <span className="h-px w-6 bg-[#38bdf8]" />
         {eyebrow}
       </p>
-      <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-        {title}
-      </h2>
-      {text && (
-        <p className="mt-4 max-w-xl text-lg leading-8 text-[#93a4bd]">{text}</p>
-      )}
+      <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{title}</h2>
+      {text && <p className="mt-4 max-w-xl text-lg leading-8 text-[#93a4bd]">{text}</p>}
     </div>
   );
 }
@@ -453,16 +492,25 @@ function SectionHeading({ eyebrow, title, text, className = "" }) {
 function Logo() {
   return (
     <a href="#top" className="flex items-center gap-2.5" aria-label="FieldProof home">
-      {/* <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.35)]">
-        <ShieldCheck className="h-5 w-5" strokeWidth={2.4} />
-      </span>
-      <span className="font-display text-xl font-bold tracking-tight">
-        FieldProof
-      </span> */}
-      <img src={feildprooflogo} alt="FieldProof Logo" className="h-12 w-auto" />
+      <img src={feildprooflogo} alt="FieldProof Logo" className="h-12 w-auto" decoding="async" />
     </a>
   );
 }
+
+function DownloadDesktopLink({ className = "", children }) {
+  return (
+    <a href={DOWNLOAD_DESKTOP_URL} className={className} rel="noopener noreferrer">
+      {children}
+    </a>
+  );
+}
+
+// The soft light that follows the mouse inside a card
+const followMouse = (event) => {
+  const box = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty("--mx", `${event.clientX - box.left}px`);
+  event.currentTarget.style.setProperty("--my", `${event.clientY - box.top}px`);
+};
 
 /* ------------------------------------------------------------------ */
 /* Header                                                               */
@@ -473,12 +521,7 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
 
   useEffect(() => {
     if (menuOpen && panelRef.current && !prefersReducedMotion()) {
-      gsap.from(panelRef.current, {
-        y: -12,
-        opacity: 0,
-        duration: 0.3,
-        ease: "power2.out",
-      });
+      gsap.from(panelRef.current, { y: -12, opacity: 0, duration: 0.3, ease: "power2.out" });
     }
   }, [menuOpen]);
 
@@ -502,9 +545,7 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
                 href={item.href}
                 aria-current={active ? "true" : undefined}
                 className={`relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
-                  active
-                    ? "text-white"
-                    : "text-[#93a4bd] hover:text-white"
+                  active ? "text-white" : "text-[#93a4bd] hover:text-white"
                 }`}
               >
                 {item.label}
@@ -519,6 +560,10 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
+          <DownloadDesktopLink className="inline-flex items-center gap-1.5 rounded-xl border border-[#1d2b45] px-3.5 py-2.5 text-sm font-medium text-[#e8eef7] transition-colors hover:border-[#2a3b5a] hover:bg-white/5">
+            <Download className="h-4 w-4" />
+            Desktop
+          </DownloadDesktopLink>
           <Link
             to={LOGIN_PATH}
             className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#e8eef7] transition-colors hover:bg-white/5"
@@ -545,10 +590,7 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
       </div>
 
       {menuOpen && (
-        <div
-          ref={panelRef}
-          className="border-t border-[#1d2b45] bg-[#0a1220] px-5 pb-5 pt-2 md:hidden"
-        >
+        <div ref={panelRef} className="border-t border-[#1d2b45] bg-[#0a1220] px-5 pb-5 pt-2 md:hidden">
           <nav aria-label="Mobile" className="flex flex-col">
             {NAV.map((item) => (
               <a
@@ -562,19 +604,22 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
               </a>
             ))}
           </nav>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Link
-              to={LOGIN_PATH}
-              className="rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium"
-            >
-              Log in
-            </Link>
-            <Link
-              to={REGISTER_PATH}
-              className="rounded-xl bg-[#38bdf8] py-2.5 text-center text-sm font-semibold text-[#0a1220]"
-            >
-              Get started
-            </Link>
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            <DownloadDesktopLink className="flex items-center justify-center gap-2 rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium">
+              <Download className="h-4 w-4" />
+              Download for Windows
+            </DownloadDesktopLink>
+            <div className="grid grid-cols-2 gap-3">
+              <Link to={LOGIN_PATH} className="rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium">
+                Log in
+              </Link>
+              <Link
+                to={REGISTER_PATH}
+                className="rounded-xl bg-[#38bdf8] py-2.5 text-center text-sm font-semibold text-[#0a1220]"
+              >
+                Get started
+              </Link>
+            </div>
           </div>
         </div>
       )}
@@ -589,6 +634,7 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden pt-28 sm:pt-32">
+      {/* Soft glows and a faint grid behind everything (decoration only) */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-40 top-10 h-[480px] w-[480px] rounded-full bg-[#38bdf8]/10 blur-3xl"
@@ -597,6 +643,7 @@ function Hero() {
         aria-hidden="true"
         className="pointer-events-none absolute -left-48 top-64 h-[360px] w-[360px] rounded-full bg-[#38bdf8]/[0.06] blur-3xl"
       />
+      <div aria-hidden="true" className="hero-grid pointer-events-none absolute inset-0" />
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
         <div>
@@ -613,14 +660,14 @@ function Hero() {
             </span>
             <span className="block overflow-hidden pb-[0.12em]">
               <span className="hero-line block">
-                was actually <span className="text-[#38bdf8]">there.</span>
+                was actually <span className="text-gradient">there.</span>
               </span>
             </span>
           </h1>
 
           <p className="hero-fade mt-6 max-w-xl text-lg leading-8 text-[#93a4bd]">
-            FieldProof checks every worker&apos;s GPS position and photo against
-            the site you set, so attendance stops being a matter of trust.
+            FieldProof checks every worker&apos;s GPS position and photo against the site you set, so attendance
+            stops being a matter of trust.
           </p>
 
           <div className="hero-fade mt-9 flex flex-wrap items-center gap-3">
@@ -631,6 +678,10 @@ function Hero() {
               Get started
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+            <DownloadDesktopLink className="inline-flex items-center gap-2 rounded-xl border border-[#2a3b5a] px-6 py-3.5 text-base font-medium text-[#e8eef7] transition-all hover:border-[#3d5380] hover:bg-white/[0.04]">
+              <Download className="h-4 w-4" />
+              Download for Windows
+            </DownloadDesktopLink>
             <a
               href="#how"
               className="rounded-xl border border-[#2a3b5a] px-7 py-3.5 text-base font-medium text-[#e8eef7] transition-all hover:border-[#3d5380] hover:bg-white/[0.04]"
@@ -639,9 +690,16 @@ function Hero() {
             </a>
           </div>
 
-          <p className="hero-fade mt-6 flex items-center gap-2 text-sm text-[#93a4bd]">
-            <Smartphone className="h-4 w-4 shrink-0" />
-            Runs in the browser on any phone. Nothing to install.
+          <p className="hero-fade mt-6 flex flex-col gap-2 text-sm text-[#93a4bd] sm:flex-row sm:items-center sm:gap-4">
+            <span className="inline-flex items-center gap-2">
+              <Smartphone className="h-4 w-4 shrink-0" />
+              Runs in the browser on any phone.
+            </span>
+            <span className="hidden h-1 w-1 rounded-full bg-[#93a4bd]/50 sm:inline-block" />
+            <span className="inline-flex items-center gap-2">
+              <Download className="h-4 w-4 shrink-0" />
+              Optional Windows desktop app for the office.
+            </span>
           </p>
         </div>
 
@@ -656,7 +714,7 @@ function HeroVisual() {
     <div className="hero-panel">
       <div
         role="img"
-        aria-label="Animation: a worker walks toward a work site. When they are inside the radius, a check-in stamp appears."
+        aria-label="Animation: a worker walks toward a work site. When they are inside the radius, a check-in stamp appears and the manager approves it."
         className="hero-visual relative h-[380px] overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] shadow-[0_40px_100px_-40px_rgba(56,189,248,0.35)] sm:h-[460px]"
         style={{
           backgroundImage:
@@ -673,9 +731,7 @@ function HeroVisual() {
             </span>
             Inspect generator
           </span>
-          <span className="rounded-md border border-[#1d2b45] bg-[#0a1220] px-2 py-0.5">
-            Radius 100 m
-          </span>
+          <span className="rounded-md border border-[#1d2b45] bg-[#0a1220] px-2 py-0.5">Radius 100 m</span>
         </div>
 
         <div className="absolute inset-0 grid place-items-center pt-8">
@@ -702,6 +758,17 @@ function HeroVisual() {
           </div>
         </div>
 
+        {/* The manager approves (appears after the stamp) */}
+        <div className="review-card absolute right-4 top-16 z-10 hidden items-center gap-3 rounded-xl border border-emerald-400/30 bg-[#0a1220]/90 p-2.5 pr-4 backdrop-blur sm:flex">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-400">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div className="text-xs">
+            <p className="font-semibold text-[#e8eef7]">Manager review</p>
+            <p className="mt-0.5 text-emerald-300">Approved</p>
+          </div>
+        </div>
+
         <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
           <div className="status-chip rounded-lg border border-[#2a3b5a] bg-[#0a1220]/90 px-3 py-2 text-xs text-[#e8eef7] backdrop-blur">
             Ali Raza is inside the radius. Photo attached.
@@ -710,9 +777,7 @@ function HeroVisual() {
 
         <div className="stamp absolute bottom-16 right-5 flex h-24 w-24 -rotate-[10deg] flex-col items-center justify-center rounded-full border-[3px] border-[#fbbf24] bg-[#fbbf24]/[0.12] text-center text-[#fbbf24] shadow-[0_0_40px_rgba(251,191,36,0.25)] sm:bottom-20 sm:right-8 sm:h-28 sm:w-28">
           <span className="font-display text-xs font-semibold">Checked in</span>
-          <span className="font-display text-xl font-bold leading-tight">
-            08:42
-          </span>
+          <span className="font-display text-xl font-bold leading-tight">08:42</span>
         </div>
       </div>
     </div>
@@ -720,34 +785,98 @@ function HeroVisual() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Facts bar                                                            */
+/* Facts, the use cases strip, and before / after                        */
 /* ------------------------------------------------------------------ */
 
 function Facts() {
   return (
-    <section
-      aria-label="Key facts"
-      className="border-y border-[#1d2b45] bg-[#0c1626]"
-    >
+    <section aria-label="Key facts" className="border-y border-[#1d2b45] bg-[#0c1626]">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-[#1d2b45] lg:grid-cols-4">
         {FACTS.map(({ icon: Icon, value, label }) => (
-          <div
-            key={label}
-            className="reveal flex items-center gap-4 bg-[#0c1626] px-5 py-7 sm:px-8"
-          >
+          <div key={label} className="reveal flex items-center gap-4 bg-[#0c1626] px-5 py-7 sm:px-8">
             <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#1d2b45] bg-[#0f1a2e] text-[#38bdf8] sm:flex">
               <Icon className="h-5 w-5" />
             </span>
             <div>
-              <p className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-                {value}
-              </p>
-              <p className="mt-0.5 text-xs leading-5 text-[#93a4bd] sm:text-sm">
-                {label}
-              </p>
+              <p className="font-display text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
+              <p className="mt-0.5 text-xs leading-5 text-[#93a4bd] sm:text-sm">{label}</p>
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+// A slow strip of the kinds of work FieldProof is made for. It stops when the mouse is on it.
+function UseCases() {
+  const chips = (hidden) =>
+    USE_CASES.map((name) => (
+      <li
+        key={`${name}${hidden ? "-copy" : ""}`}
+        aria-hidden={hidden || undefined}
+        className="flex shrink-0 items-center gap-2.5 rounded-full border border-[#1d2b45] bg-[#0f1a2e] px-4 py-2 text-sm text-[#cbd5e1]"
+      >
+        <MapPin className="h-3.5 w-3.5 text-[#38bdf8]" />
+        {name}
+      </li>
+    ));
+
+  return (
+    <section aria-label="Kinds of work" className="py-10">
+      <p className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-[#93a4bd]">
+        Made for work like
+      </p>
+      <div className="marquee-mask overflow-hidden">
+        <ul className="marquee flex w-max gap-3">
+          {chips(false)}
+          {chips(true)}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function Contrast() {
+  return (
+    <section className="pb-20 pt-6 sm:pb-28">
+      <div className="mx-auto max-w-6xl px-5">
+        <SectionHeading
+          eyebrow="Before and after"
+          title="Stop guessing who was on site"
+          text="Attendance on paper and in chat groups is a matter of trust. FieldProof turns it into evidence."
+          className="max-w-2xl"
+        />
+
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <div className="reveal rounded-2xl border border-[#1d2b45] bg-[#0c1626] p-6 sm:p-8">
+            <p className="font-display text-lg font-semibold text-[#93a4bd]">Without proof</p>
+            <ul className="mt-5 space-y-4">
+              {CONTRAST.without.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[#93a4bd]">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-400/10 text-rose-400">
+                    <X className="h-3.5 w-3.5" strokeWidth={3} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="reveal rounded-2xl border border-[#38bdf8]/30 bg-gradient-to-br from-[#0f1a2e] to-[#0c1a2c] p-6 shadow-[0_30px_70px_-40px_rgba(56,189,248,0.5)] sm:p-8">
+            <p className="font-display text-lg font-semibold text-[#38bdf8]">With FieldProof</p>
+            <ul className="mt-5 space-y-4">
+              {CONTRAST.with.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[#e8eef7]">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -757,9 +886,23 @@ function Facts() {
 /* What you get                                                         */
 /* ------------------------------------------------------------------ */
 
+// A small picture of a site radius, for the first (big) card
+function RadiusGraphic() {
+  return (
+    <div aria-hidden="true" className="relative hidden h-36 w-36 shrink-0 place-items-center sm:grid">
+      <span className="absolute h-36 w-36 rounded-full border border-[#38bdf8]/20" />
+      <span className="absolute h-24 w-24 rounded-full border border-dashed border-[#38bdf8]/50 bg-[#38bdf8]/[0.06]" />
+      <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#38bdf8] text-[#0a1220] shadow-[0_0_24px_rgba(56,189,248,0.5)]">
+        <MapPin className="h-4 w-4" strokeWidth={2.6} />
+      </span>
+      <span className="absolute bottom-3 right-5 h-3 w-3 rounded-full border-2 border-[#0f1a2e] bg-emerald-400" />
+    </div>
+  );
+}
+
 function Proof() {
   return (
-    <section id="proof" className="scroll-mt-20 py-20 sm:py-28">
+    <section id="proof" className="scroll-mt-20 border-t border-[#1d2b45] py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-5">
         <SectionHeading
           eyebrow="What you get"
@@ -769,22 +912,31 @@ function Proof() {
         />
 
         <ul className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {PROOF.map(({ icon: Icon, title, text }) => (
-            <li
-              key={title}
-              className="reveal card-hover group relative overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] p-6"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#38bdf8]/20 bg-[#38bdf8]/10 text-[#38bdf8] transition-all duration-300 group-hover:scale-105 group-hover:border-[#38bdf8]/40 group-hover:bg-[#38bdf8] group-hover:text-[#0a1220]">
-                <Icon className="h-5 w-5" />
-              </span>
-              <h3 className="mt-5 font-display text-lg font-semibold tracking-tight text-white">
-                {title}
-              </h3>
-              <p className="mt-2.5 text-[15px] leading-7 text-[#93a4bd]">
-                {text}
-              </p>
-            </li>
-          ))}
+          {PROOF.map(({ icon: Icon, title, text }, index) => {
+            const featured = index === 0; // the first card is wider and has a picture
+
+            return (
+              <li
+                key={title}
+                onMouseMove={followMouse}
+                className={`reveal card-hover spotlight group relative overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0f1a2e] p-6 ${
+                  featured ? "lg:col-span-2" : ""
+                }`}
+              >
+                <div className={featured ? "flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between" : ""}>
+                  <div>
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#38bdf8]/20 bg-[#38bdf8]/10 text-[#38bdf8] transition-all duration-300 group-hover:scale-105 group-hover:border-[#38bdf8]/40 group-hover:bg-[#38bdf8] group-hover:text-[#0a1220]">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-5 font-display text-lg font-semibold tracking-tight text-white">{title}</h3>
+                    <p className="mt-2.5 max-w-lg text-[15px] leading-7 text-[#93a4bd]">{text}</p>
+                  </div>
+
+                  {featured && <RadiusGraphic />}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </section>
@@ -797,50 +949,128 @@ function Proof() {
 
 function HowItWorks() {
   return (
-    <section
-      id="how"
-      className="scroll-mt-20 border-y border-[#1d2b45] bg-[#0f1a2e] py-20 sm:py-28"
-    >
+    <section id="how" className="scroll-mt-20 border-y border-[#1d2b45] bg-[#0f1a2e] py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-5">
-        <SectionHeading
-          eyebrow="How it works"
-          title="From assignment to proof in three steps"
-        />
+        <SectionHeading eyebrow="How it works" title="From assignment to proof in three steps" />
 
         <ol className="steps relative mt-14">
-          <span
-            aria-hidden="true"
-            className="absolute bottom-6 left-[19.5px] top-6 w-px bg-[#1d2b45]"
-          />
+          <span aria-hidden="true" className="absolute bottom-6 left-[19.5px] top-6 w-px bg-[#1d2b45]" />
           <span
             aria-hidden="true"
             className="steps-fill absolute bottom-6 left-[19.5px] top-6 w-px bg-[#38bdf8]"
           />
 
           {STEPS.map((step, index) => (
-            <li
-              key={step.title}
-              className="step relative flex gap-6 pb-14 last:pb-0"
-            >
+            <li key={step.title} className="step relative flex gap-6 pb-14 last:pb-0">
               <span className="step-dot relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#1d2b45] bg-[#0f1a2e] font-display text-base font-bold text-[#93a4bd]">
                 {index + 1}
               </span>
               <div className="pt-1.5">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="step-title font-display text-xl font-semibold tracking-tight">
-                    {step.title}
-                  </h3>
+                  <h3 className="step-title font-display text-xl font-semibold tracking-tight">{step.title}</h3>
                   <span className="rounded-full border border-[#1d2b45] bg-[#0a1220] px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider text-[#93a4bd]">
                     {step.tag}
                   </span>
                 </div>
-                <p className="mt-2 max-w-xl leading-7 text-[#93a4bd]">
-                  {step.text}
-                </p>
+                <p className="mt-2 max-w-xl leading-7 text-[#93a4bd]">{step.text}</p>
               </div>
             </li>
           ))}
         </ol>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Review flow: the manager approves or rejects with a reason           */
+/* ------------------------------------------------------------------ */
+
+function ReviewMock() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#1d2b45] bg-[#0a1220] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-[#1d2b45] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[#38bdf8]/20 bg-[#38bdf8]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
+            <ShieldCheck className="h-3 w-3" />
+            Field audit
+          </span>
+          <span className="truncate text-sm font-semibold">Inspect generator</span>
+        </div>
+        <span className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+          Pending review
+        </span>
+      </div>
+
+      {/* Check-in and check-out proof */}
+      <div className="grid grid-cols-2 gap-3 p-4">
+        {[
+          { label: "Check-in", time: "08:42", note: "38 m from the pin", tone: "text-[#38bdf8]" },
+          { label: "Check-out", time: "12:57", note: "21 m from the pin", tone: "text-emerald-400" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-[#1d2b45] bg-[#0f1a2e] p-3">
+            <p className={`text-[11px] font-bold uppercase tracking-wider ${item.tone}`}>{item.label}</p>
+            <div className="mt-2 flex h-16 items-center justify-center rounded-lg border border-[#1d2b45] bg-[#0a1220] text-[#38bdf8]/60">
+              <Camera className="h-6 w-6" />
+            </div>
+            <p className="mt-2 font-mono text-xs text-[#e8eef7]">{item.time}</p>
+            <p className="text-[11px] text-[#93a4bd]">{item.note}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Reject with a required reason */}
+      <div className="border-t border-[#1d2b45] bg-[#0c1626] p-4">
+        <p className="text-xs font-semibold text-[#cbd5e1]">
+          Reason for rejection <span className="text-rose-400">*</span>
+        </p>
+        <div className="mt-2 rounded-lg border border-rose-400/30 bg-[#0a1220] px-3 py-2.5 text-xs leading-5 text-[#cbd5e1]">
+          The check-out photo is blurry. Please take it again.
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <span className="flex h-9 items-center justify-center rounded-lg border border-[#2a3b5a] text-xs font-bold text-[#cbd5e1]">
+            Cancel
+          </span>
+          <span className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-rose-600 text-xs font-bold text-white">
+            <X className="h-3.5 w-3.5" />
+            Confirm reject
+          </span>
+        </div>
+      </div>
+
+      <p className="border-t border-[#1d2b45] px-4 py-2 text-center text-[11px] text-[#5f7191]">Sample data</p>
+    </div>
+  );
+}
+
+function ReviewFlow() {
+  return (
+    <section className="py-20 sm:py-28">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2 lg:gap-20">
+        <div className="reveal">
+          <SectionHeading
+            eyebrow="Review"
+            title="Approve or reject, with a reason"
+            text="Proof is only useful if someone checks it. Managers review every visit in one place, and every decision is recorded."
+          />
+
+          <ul className="mt-8 space-y-4">
+            {REVIEW_POINTS.map((point) => (
+              <li key={point} className="flex items-start gap-3 text-[#cbd5e1]">
+                <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="reveal">
+          <ReviewMock />
+        </div>
       </div>
     </section>
   );
@@ -861,18 +1091,14 @@ function Roles() {
       return;
     }
     if (panelRef.current && !prefersReducedMotion()) {
-      gsap.fromTo(
-        panelRef.current,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
-      );
+      gsap.fromTo(panelRef.current, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" });
     }
   }, [role]);
 
   const current = ROLES[role];
 
   return (
-    <section id="roles" className="scroll-mt-20 py-20 sm:py-28">
+    <section id="roles" className="scroll-mt-20 border-t border-[#1d2b45] py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-5">
         <SectionHeading
           eyebrow="Who uses it"
@@ -922,10 +1148,7 @@ function Roles() {
             </h3>
             <ul className="mt-6 space-y-4">
               {current.points.map((point) => (
-                <li
-                  key={point}
-                  className="flex items-start gap-3 text-[#cbd5e1]"
-                >
+                <li key={point} className="flex items-start gap-3 text-[#cbd5e1]">
                   <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
                     <Check className="h-3.5 w-3.5" strokeWidth={3} />
                   </span>
@@ -942,21 +1165,12 @@ function Roles() {
             </div>
             <ul className="divide-y divide-[#1d2b45]">
               {current.preview.map((row) => (
-                <li
-                  key={row.title}
-                  className="flex items-center justify-between gap-3 px-4 py-3.5"
-                >
+                <li key={row.title} className="flex items-center justify-between gap-3 px-4 py-3.5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[#e8eef7]">
-                      {row.title}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-[#93a4bd]">
-                      {row.meta}
-                    </p>
+                    <p className="truncate text-sm font-medium text-[#e8eef7]">{row.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-[#93a4bd]">{row.meta}</p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TONE[row.tone]}`}
-                  >
+                  <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TONE[row.tone]}`}>
                     {row.status}
                   </span>
                 </li>
@@ -970,12 +1184,99 @@ function Roles() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Desktop app                                                          */
+/* ------------------------------------------------------------------ */
+
+function DesktopMock() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[#1d2b45] bg-[#0a1220] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+      {/* Title bar of the window */}
+      <div className="flex items-center gap-2 border-b border-[#1d2b45] bg-[#0f1a2e] px-3 py-2.5">
+        <span className="flex gap-1.5" aria-hidden="true">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#1d2b45]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#1d2b45]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#1d2b45]" />
+        </span>
+        <span className="mx-auto text-[11px] font-medium text-[#93a4bd]">FieldProof</span>
+        <span className="w-10" aria-hidden="true" />
+      </div>
+
+      <div className="grid sm:grid-cols-[130px_1fr]">
+        {/* Menu */}
+        <div className="hidden space-y-2 border-r border-[#1d2b45] p-3 sm:block">
+          {["Tasks", "Verification", "My workers", "Reviewed"].map((item, index) => (
+            <div
+              key={item}
+              className={`rounded-md px-2.5 py-1.5 text-xs ${
+                index === 0 ? "bg-[#38bdf8]/15 font-medium text-[#38bdf8]" : "text-[#93a4bd]"
+              }`}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+
+        {/* Rows */}
+        <ul className="divide-y divide-[#1d2b45]">
+          {ROLES.manager.preview.map((row) => (
+            <li key={row.title} className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="truncate text-xs font-medium text-[#e8eef7]">{row.title}</span>
+              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${TONE[row.tone]}`}>
+                {row.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="border-t border-[#1d2b45] px-4 py-2 text-center text-[11px] text-[#5f7191]">Sample data</p>
+    </div>
+  );
+}
+
+function DesktopApp() {
+  return (
+    <section className="border-y border-[#1d2b45] bg-[#0c1626] py-20 sm:py-28">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2 lg:gap-20">
+        <div className="reveal order-2 lg:order-1">
+          <DesktopMock />
+        </div>
+
+        <div className="reveal order-1 lg:order-2">
+          <SectionHeading
+            eyebrow="Desktop app"
+            title="Prefer a window of its own?"
+            text="Managers and office users can install FieldProof on Windows. Workers in the field keep using the browser on their phone."
+          />
+
+          <ul className="mt-8 space-y-4">
+            {DESKTOP_POINTS.map((point) => (
+              <li key={point} className="flex items-start gap-3 text-[#cbd5e1]">
+                <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
+
+          <DownloadDesktopLink className="btn-primary group mt-9 inline-flex items-center gap-2.5 rounded-xl bg-[#38bdf8] px-7 py-3.5 text-base font-semibold text-[#0a1220] shadow-lg shadow-sky-500/25 hover:bg-[#7dd3fc]">
+            <Monitor className="h-4 w-4" />
+            Download for Windows
+          </DownloadDesktopLink>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Activity log                                                         */
 /* ------------------------------------------------------------------ */
 
 function Activity({ feedActive }) {
   return (
-    <section className="border-y border-[#1d2b45] bg-[#0f1a2e] py-20 sm:py-28">
+    <section className="py-20 sm:py-28">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2 lg:gap-20">
         <div>
           <SectionHeading
@@ -1011,13 +1312,7 @@ function ActivityFeed({ active }) {
     gsap.fromTo(
       newest,
       { opacity: 0, y: -14, backgroundColor: "rgba(56,189,248,0.18)" },
-      {
-        opacity: 1,
-        y: 0,
-        backgroundColor: "rgba(56,189,248,0)",
-        duration: 0.6,
-        ease: "power2.out",
-      }
+      { opacity: 1, y: 0, backgroundColor: "rgba(56,189,248,0)", duration: 0.6, ease: "power2.out" }
     );
   }, [tick]);
 
@@ -1046,18 +1341,12 @@ function ActivityFeed({ active }) {
             key={row.key}
             className="flex items-start gap-3 border-b border-[#1d2b45] px-5 py-3.5 last:border-b-0"
           >
-            <span
-              className={`mt-2 h-2 w-2 shrink-0 rounded-full ${FEED_DOT[row.type]}`}
-            />
+            <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${FEED_DOT[row.type]}`} />
             <div className="flex-1">
               <p className="text-sm leading-6 text-[#e8eef7]">{row.text}</p>
-              <p className="text-[11px] uppercase tracking-wider text-[#5f7191]">
-                {FEED_LABEL[row.type]}
-              </p>
+              <p className="text-[11px] uppercase tracking-wider text-[#5f7191]">{FEED_LABEL[row.type]}</p>
             </div>
-            <span className="shrink-0 pt-0.5 text-xs tabular-nums text-[#93a4bd]">
-              {row.when}
-            </span>
+            <span className="shrink-0 pt-0.5 text-xs tabular-nums text-[#93a4bd]">{row.when}</span>
           </li>
         ))}
       </ul>
@@ -1073,12 +1362,9 @@ function Faq() {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <section id="faq" className="scroll-mt-20 py-20 sm:py-28">
+    <section id="faq" className="scroll-mt-20 border-t border-[#1d2b45] py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-5">
-        <SectionHeading
-          eyebrow="Questions"
-          title="Questions people ask first"
-        />
+        <SectionHeading eyebrow="Questions" title="Questions people ask first" />
 
         <div className="mt-10 space-y-3">
           {FAQ.map((item, index) => (
@@ -1150,7 +1436,7 @@ function FaqItem({ id, question, answer, open, onToggle }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Final call to action                                                 */
+/* Final call to action, footer and the sticky bar for phones           */
 /* ------------------------------------------------------------------ */
 
 function FinalCta() {
@@ -1158,14 +1444,18 @@ function FinalCta() {
     <section className="relative overflow-hidden bg-[#fbbf24] text-[#0a1220]">
       <div aria-hidden="true" className="hazard h-3 w-full" />
 
-      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-10 px-5 py-20 md:flex-row md:items-center sm:py-24">
+      {/* Soft light shapes (decoration only) */}
+      <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 left-10 h-56 w-56 rounded-full bg-[#0a1220]/10 blur-3xl" />
+
+      <div className="relative mx-auto flex max-w-6xl flex-col items-start justify-between gap-10 px-5 py-20 md:flex-row md:items-center sm:py-24">
         <div className="max-w-xl">
           <h2 className="font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-[2.75rem]">
             See who is really on site today
           </h2>
           <p className="mt-4 text-lg leading-8 text-[#3b3410]/90">
-            Create an account, add your first task and watch the first check-in
-            arrive with its photo.
+            Create an account, add your first task and watch the first check-in arrive with its photo. Prefer a
+            desktop window? Download the Windows app.
           </p>
         </div>
 
@@ -1177,6 +1467,10 @@ function FinalCta() {
             Get started
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
+          <DownloadDesktopLink className="inline-flex items-center gap-2 rounded-xl border-2 border-[#0a1220]/80 px-6 py-3.5 text-base font-semibold transition hover:bg-[#0a1220]/10">
+            <Download className="h-4 w-4" />
+            Download for Windows
+          </DownloadDesktopLink>
           <Link
             to={LOGIN_PATH}
             className="rounded-xl border-2 border-[#0a1220]/80 px-7 py-3.5 text-base font-semibold transition hover:bg-[#0a1220]/10"
@@ -1189,19 +1483,14 @@ function FinalCta() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Footer                                                               */
-/* ------------------------------------------------------------------ */
-
 function Footer() {
   return (
-    <footer className="border-t border-[#1d2b45] bg-[#0a1220] py-14">
+    <footer className="border-t border-[#1d2b45] bg-[#0a1220] pb-24 pt-14 md:pb-14">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-6 text-[#93a4bd]">
-            Proof that your field team was where they said they were, with the
-            time and the photo to show for it.
+            Proof that your field team was where they said they were, with the time and the photo to show for it.
           </p>
         </div>
 
@@ -1212,6 +1501,7 @@ function Footer() {
             { label: "How it works", href: "#how" },
             { label: "Who uses it", href: "#roles" },
             { label: "Questions", href: "#faq" },
+            { label: "Download for Windows", href: DOWNLOAD_DESKTOP_URL, external: true },
           ]}
         />
 
@@ -1233,9 +1523,7 @@ function Footer() {
       </div>
 
       <div className="mx-auto mt-12 flex max-w-6xl flex-col items-start justify-between gap-4 border-t border-[#1d2b45] px-5 pt-6 text-sm text-[#93a4bd] sm:flex-row sm:items-center">
-        <span>
-          &copy; {new Date().getFullYear()} FieldProof. All rights reserved.
-        </span>
+        <span>&copy; {new Date().getFullYear()} FieldProof. All rights reserved.</span>
         <a
           href="#top"
           className="inline-flex items-center gap-2 rounded-xl border border-[#1d2b45] px-3 py-1.5 transition-colors hover:border-[#2a3b5a] hover:text-[#e8eef7]"
@@ -1256,16 +1544,14 @@ function FooterColumn({ title, links }) {
         {links.map((link) => (
           <li key={link.label}>
             {link.to ? (
-              <Link
-                to={link.to}
-                className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]"
-              >
+              <Link to={link.to} className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]">
                 {link.label}
               </Link>
             ) : (
               <a
                 href={link.href}
                 className="text-sm text-[#93a4bd] transition-colors hover:text-[#e8eef7]"
+                {...(link.external ? { rel: "noopener noreferrer" } : {})}
               >
                 {link.label}
               </a>
@@ -1273,6 +1559,36 @@ function FooterColumn({ title, links }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// A bar at the bottom of phones. It slides in after the hero.
+function StickyCta({ visible }) {
+  return (
+    <div
+      aria-hidden={!visible}
+      className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#1d2b45] bg-[#0a1220]/90 p-3 backdrop-blur-md transition-transform duration-300 md:hidden ${
+        visible ? "translate-y-0" : "translate-y-full"
+      }`}
+    >
+      <div className="mx-auto flex max-w-md items-center gap-3">
+        <Link
+          to={REGISTER_PATH}
+          tabIndex={visible ? 0 : -1}
+          className="btn-primary flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#38bdf8] text-sm font-semibold text-[#0a1220]"
+        >
+          Get started
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+        <Link
+          to={LOGIN_PATH}
+          tabIndex={visible ? 0 : -1}
+          className="flex h-11 items-center rounded-xl border border-[#2a3b5a] px-4 text-sm font-medium"
+        >
+          Log in
+        </Link>
+      </div>
     </div>
   );
 }
@@ -1330,6 +1646,28 @@ button:focus-visible {
   box-shadow: 0 4px 30px -10px rgba(0, 0, 0, 0.4);
 }
 
+/* "there." in the headline: the blue slowly slides */
+.text-gradient {
+  color: #38bdf8;
+  background: linear-gradient(90deg, #38bdf8, #7dd3fc, #bae6fd, #38bdf8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-slide 6s linear infinite;
+}
+@keyframes gradient-slide { to { background-position: 200% center; } }
+
+/* A faint grid behind the hero that fades away at the edges */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(147, 164, 189, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(147, 164, 189, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+  mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+}
+
 .btn-primary {
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1345,6 +1683,34 @@ button:focus-visible {
   border-color: rgba(56, 189, 248, 0.45);
   transform: translateY(-4px);
   box-shadow: 0 24px 48px -28px rgba(56, 189, 248, 0.4);
+}
+
+/* The soft light that follows the mouse inside a card */
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), rgba(56, 189, 248, 0.12), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.spotlight:hover::before { opacity: 1; }
+.spotlight > * { position: relative; }
+
+/* The strip of use cases */
+.marquee { animation: marquee 45s linear infinite; }
+.marquee:hover { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee,
+  .text-gradient { animation: none; }
 }
 
 .step .step-dot {
