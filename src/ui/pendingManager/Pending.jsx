@@ -1,100 +1,105 @@
-import {useContext} from "react";
-import {context} from "../../context/context.jsx";
+import { useContext } from "react";
+import { context } from "../../context/context.jsx";
+import useAuth from "../../hooks/useAuth.jsx";
+import { LogOut, ShieldCheck, Clock3, Info } from "lucide-react";
 
 function Pending() {
-  const {user} = useContext(context);
+  const { user } = useContext(context);
+  const { logout } = useAuth();
+
+  const isPending = user?.role === "pending_manager";
+
+  const onLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#07111F] px-4 py-10 text-white">
+    <div
+      role="status"
+      className="fixed inset-0 z-[2000] flex min-h-screen w-full flex-col items-center justify-center overflow-y-auto bg-[#0b0f17] px-4 py-10 text-white"
+    >
+      {/* soft background */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500/[0.07] blur-[100px]"
+      />
 
-      <div className="w-full max-w-md rounded-2xl border border-[#233753] bg-[#0D1B2E] p-6 shadow-2xl shadow-black/20 sm:p-8">
-
-        {/* Status Icon */}
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-blue-400"
-          >
-            <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
+      <div className="relative z-10 w-full max-w-md text-center">
+        {/* Icon */}
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-500/10">
+          <ShieldCheck className="h-8 w-8 text-sky-400" strokeWidth={1.8} />
         </div>
 
-        {/* Heading */}
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
-            Request Pending
-          </h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          Approval pending
+        </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-400">
-            Your request has been successfully submitted
-            and is awaiting admin approval.
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-slate-400">
+          Your manager request is with the admin team. You will get access to
+          the manager dashboard after it is approved.
+        </p>
+
+        {user?.name && (
+          <p className="mt-2 text-xs text-slate-500">
+            Signed in as{" "}
+            <span className="font-medium text-slate-300">{user.name}</span>
           </p>
-        </div>
+        )}
 
-        {/* Status Badge */}
+        {/* Badge */}
         <div className="mt-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/10 px-3.5 py-1.5 text-sm font-medium text-amber-300">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-            {
-              user?.role === "pending_manager" ? "Pending" : "Approved"
-            }
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
+              isPending
+                ? "border-amber-400/25 bg-amber-400/10 text-amber-300"
+                : "border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isPending ? "animate-pulse bg-amber-400" : "bg-emerald-400"
+              }`}
+            />
+            <Clock3 className="h-3.5 w-3.5" />
+            {isPending ? "Waiting for approval" : "Approved"}
           </span>
         </div>
 
-        {/* Divider */}
-        <div className="my-7 border-t border-[#233753]" />
-
-        {/* Information */}
-        <div className="rounded-xl border border-[#233753] bg-[#091525] p-4">
-          <div className="flex items-start gap-3">
-
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="19"
-                height="19"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-blue-400"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
-              </svg>
+        {/* Info box */}
+        <div className="mt-8 rounded-2xl border border-slate-800 bg-[#111827] p-4 text-left">
+          <div className="flex gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+              <Info className="h-4 w-4 text-sky-400" />
             </div>
-
             <div>
-              <h2 className="text-sm font-medium text-slate-200">
+              <p className="text-sm font-medium text-slate-200">
                 What happens next?
-              </h2>
-
-              <p className="mt-1.5 text-sm leading-6 text-slate-400">
-                Our administrator will review your request.
-                You will be notified once it has been approved.
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-400">
+                An admin will review your request. After approval, sign in again
+                to open your manager workspace.
               </p>
             </div>
-
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="mt-6 text-center text-xs text-slate-500">
+        {/* Logout */}
+        <button
+          type="button"
+          onClick={onLogout}
+          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 text-sm font-medium text-slate-200 transition hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-300"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
+
+        <p className="mt-5 text-xs text-slate-600">
           Thank you for your patience.
         </p>
-
       </div>
     </div>
   );
