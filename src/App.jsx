@@ -1,4 +1,3 @@
-
 import Routing from "./router/Routing";
 import { Toaster } from "react-hot-toast";
 import { useContext } from "react";
@@ -10,7 +9,7 @@ import OfflinePage from "./ui/OfflinePage.jsx";
 import "leaflet/dist/leaflet.css";
 
 function App() {
-  const { isLoading } = useContext(context);
+  const { isLoading, isRefreshing } = useContext(context);
   const isOnline = useOnlineStatus();
 
   const handleRetry = () => {
@@ -57,6 +56,13 @@ function App() {
           },
         }}
       />
+
+      {/* Soft refresh — page rehni chahiye */}
+      {isOnline && isRefreshing && !isLoading && (
+        <div className="fixed left-0 right-0 top-0 z-[9998] h-0.5 overflow-hidden bg-slate-800">
+          <div className="h-full w-1/3 animate-pulse bg-sky-500" />
+        </div>
+      )}
 
       {!isOnline ? (
         <OfflinePage onRetry={handleRetry} />

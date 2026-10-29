@@ -84,6 +84,7 @@ const ContextProvider = ({ children }) => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const userId = user?._id || user?.id;
   const role = user?.role;
@@ -129,50 +130,57 @@ const ContextProvider = ({ children }) => {
   // ROLE DATA
   // =========================
   const fetchRoleData = useCallback(
-    async (userRole) => {
+    async (userRole, options = {}) => {
+      const { showLoader = false } = options;
       if (!userRole) return;
 
-      if (userRole === "manager") {
-        const [tasks, verifications, workers, freeWorkers, invites] =
-          await Promise.all([
-            getAllTasks(),
-            getVerificationStatusAPI(),
-            getMyWorkers(),
-            getAvailableWorkers(),
-            getManagerInvitations(),
+      if (showLoader) setIsLoading(true);
+
+      try {
+        if (userRole === "manager") {
+          const [tasks, verifications, workers, freeWorkers, invites] =
+            await Promise.all([
+              getAllTasks(),
+              getVerificationStatusAPI(),
+              getMyWorkers(),
+              getAvailableWorkers(),
+              getManagerInvitations(),
+            ]);
+          setAllTasks(tasks || []);
+          setVerificationStatus(verifications || []);
+          setMyWorkers(workers || []);
+          setAvailableWorkers(freeWorkers || []);
+          setManagerInvitations(invites || []);
+          await fetchReviewedTasks();
+        }
+
+        if (userRole === "worker") {
+          const [tasks, list, invites] = await Promise.all([
+            getMyTasks(),
+            getNotifications(),
+            getWorkerInvitations(),
           ]);
-        setAllTasks(tasks || []);
-        setVerificationStatus(verifications || []);
-        setMyWorkers(workers || []);
-        setAvailableWorkers(freeWorkers || []);
-        setManagerInvitations(invites || []);
-        await fetchReviewedTasks();
-      }
+          setMyTasks(tasks || []);
+          setNotifications(list || []);
+          setMyInvitations(invites || []);
+          await fetchReviewedTasks();
+        }
 
-      if (userRole === "worker") {
-        const [tasks, list, invites] = await Promise.all([
-          getMyTasks(),
-          getNotifications(),
-          getWorkerInvitations(),
-        ]);
-        setMyTasks(tasks || []);
-        setNotifications(list || []);
-        setMyInvitations(invites || []);
-        await fetchReviewedTasks();
-      }
+        if (userRole === "admin") {
+          const [infos, users, requests] = await Promise.all([
+            getAdminInfos(),
+            getAllUsers(),
+            getManagerRequests(),
+          ]);
+          setAdminInfos(infos || []);
+          setAllUsers(users || []);
+          setManagerRequests(getPendingManagerRequests(requests));
+        }
 
-      if (userRole === "admin") {
-        const [infos, users, requests] = await Promise.all([
-          getAdminInfos(),
-          getAllUsers(),
-          getManagerRequests(),
-        ]);
-        setAdminInfos(infos || []);
-        setAllUsers(users || []);
-        setManagerRequests(getPendingManagerRequests(requests));
+        lastFetchRef.current = Date.now();
+      } finally {
+        if (showLoader) setIsLoading(false);
       }
-
-      lastFetchRef.current = Date.now();
     },
     [fetchReviewedTasks]
   );
@@ -206,12 +214,14 @@ const ContextProvider = ({ children }) => {
   const refresh = useCallback(async () => {
     if (!role || isFetchingRef.current) return;
     isFetchingRef.current = true;
+    setIsRefreshing(true);
     try {
       await Promise.all([fetchRoleData(role), syncUser()]);
     } catch (error) {
       console.error("Refresh error:", error);
     } finally {
       isFetchingRef.current = false;
+      setIsRefreshing(false);
     }
   }, [role, fetchRoleData, syncUser]);
 
@@ -578,6 +588,9 @@ const ContextProvider = ({ children }) => {
 
           isLoading,
           setIsLoading,
+
+          isRefreshing,
+          setIsRefreshing,  
 
           adminInfos,
           setAdminInfos,

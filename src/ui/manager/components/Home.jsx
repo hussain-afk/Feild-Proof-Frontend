@@ -27,6 +27,7 @@ import {
   ExternalLink,
   CalendarClock,
   PlayCircle,
+  XCircle,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -36,7 +37,7 @@ import {
 const emptyForm = {
   title: "",
   description: "",
-  assignedWorker: [], // array of user IDs
+  assignedWorker: [],
   dueDate: "",
   siteLocation: {
     name: "",
@@ -59,6 +60,14 @@ const STATUS = {
     label: "Completed",
     badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   },
+  approved: {
+    label: "Approved",
+    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  },
+  rejected: {
+    label: "Rejected",
+    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  },
 };
 
 const FILTERS = [
@@ -66,6 +75,8 @@ const FILTERS = [
   { key: "pending", label: "Pending" },
   { key: "in-progress", label: "In progress" },
   { key: "completed", label: "Completed" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
 ];
 
 const inputClass =
@@ -73,24 +84,27 @@ const inputClass =
 
 const labelClass = "block text-xs font-medium text-slate-300 mb-1.5";
 
-const getId = (user) => user._id || user.id;
+const getId = (user) => user?._id || user?.id;
 
-// Latitude aur longitude dono sach me chune gaye hain ya nahi ("" ko 0 na samjho)
 const hasCoordinates = (loc) =>
   [loc?.latitude, loc?.longitude].every(
     (v) => v !== "" && v != null && Number.isFinite(Number(v))
   );
-const isManager = (user) => user.role?.toLowerCase() === "manager";
+
+const isManager = (user) => user?.role?.toLowerCase() === "manager";
+
+const normalizeStatus = (status) =>
+  String(status || "pending").toLowerCase();
 
 const formatDateTime = (value) =>
   value
     ? new Date(value).toLocaleString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })
     : "Not specified";
 
 /* ------------------------------------------------------------------ */
@@ -102,7 +116,7 @@ function Home() {
   const [formData, setFormData] = useState(emptyForm);
   const [workerSearch, setWorkerSearch] = useState("");
   const [formError, setFormError] = useState("");
-  const [addLocation, setAddLocation] = useState(true); // site location on/off
+  const [addLocation, setAddLocation] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -120,24 +134,40 @@ function Home() {
 
   /* ---------- Statistics ---------- */
   const counts = useMemo(() => {
-    const c = { all: allTasks.length, pending: 0, "in-progress": 0, completed: 0 };
+    const c = {
+      all: allTasks.length,
+      pending: 0,
+      "in-progress": 0,
+      completed: 0,
+      approved: 0,
+      rejected: 0,
+    };
+
     allTasks.forEach((t) => {
-      if (c[t.status] !== undefined) c[t.status] += 1;
+      const key = normalizeStatus(t.status);
+      if (c[key] !== undefined) c[key] += 1;
     });
+
     return c;
   }, [allTasks]);
 
   const percentOfTotal = (n) =>
-    counts.all ? `${Math.round((n / counts.all) * 100)}% of all tasks` : "No tasks yet";
+    counts.all
+      ? `${Math.round(((n || 0) / counts.all) * 100)}% of all tasks`
+      : "No tasks yet";
 
   /* ---------- Task list filtering ---------- */
   const visibleTasks = useMemo(() => {
     const text = taskSearch.trim().toLowerCase();
     return allTasks.filter((t) => {
-      const matchStatus = statusFilter === "all" || t.status === statusFilter;
+      const matchStatus =
+        statusFilter === "all" ||
+        normalizeStatus(t.status) === statusFilter;
       const matchText =
         !text ||
-        `${t.title || ""} ${t.siteLocation?.name || ""}`.toLowerCase().includes(text);
+        `${t.title || ""} ${t.siteLocation?.name || ""}`
+          .toLowerCase()
+          .includes(text);
       return matchStatus && matchText;
     });
   }, [allTasks, statusFilter, taskSearch]);
@@ -214,13 +244,11 @@ function Home() {
       return;
     }
 
-    // Location on hai to map se jagah chuni honi chahiye
     if (addLocation && !hasCoordinates(formData.siteLocation)) {
       setFormError("Pick the site on the map, or turn off the site location.");
       return;
     }
 
-    // Location off ho to siteLocation bhejte hi nahi
     const taskWithoutLocation = { ...formData };
     delete taskWithoutLocation.siteLocation;
     const payload = addLocation ? formData : taskWithoutLocation;
@@ -232,7 +260,9 @@ function Home() {
       closeCreateModal();
     } catch (error) {
       console.error("Create task error:", error);
-      setFormError("Could not create the task. Check your details and try again.");
+      setFormError(
+        "Could not create the task. Check your details and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -259,7 +289,8 @@ function Home() {
     month: "long",
   });
 
-  const selectedStatus = STATUS[selectedTask?.status] || STATUS.pending;
+  const statusKey = normalizeStatus(selectedTask?.status);
+  const selectedStatus = STATUS[statusKey] || STATUS.pending;
   const selectedLoc = selectedTask?.siteLocation;
   const hasCoords = hasCoordinates(selectedLoc);
 
@@ -277,10 +308,10 @@ function Home() {
       <div className="min-h-full text-slate-100">
         <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           {/* ================= HEADER ================= */}
-          <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
+          <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm text-slate-500">{today}</p>
-              <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                 Field operations
               </h1>
               <p className="mt-1.5 text-sm text-slate-400">
@@ -291,7 +322,7 @@ function Home() {
             <button
               type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
-              className="inline-flex h-10 w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f17]"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f17] md:w-auto"
             >
               <Plus className="h-4 w-4" />
               Create task
@@ -301,7 +332,7 @@ function Home() {
           {/* ================= STATS ================= */}
           <section
             aria-label="Task summary"
-            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8"
+            className="mb-8 grid grid-cols-3 gap-3 sm:gap-4 lg:grid-cols-6"
           >
             <StatCard
               label="Total tasks"
@@ -331,14 +362,28 @@ function Home() {
               icon={CheckCircle2}
               tone="emerald"
             />
+            <StatCard
+              label="Approved"
+              value={counts.approved}
+              hint={percentOfTotal(counts.approved)}
+              icon={CheckCircle2}
+              tone="emerald"
+            />
+            <StatCard
+              label="Rejected"
+              value={counts.rejected}
+              hint={percentOfTotal(counts.rejected)}
+              icon={XCircle}
+              tone="rose"
+            />
           </section>
 
           {/* ================= TASK LIST ================= */}
           <section aria-label="Tasks">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-white">All tasks</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="mt-0.5 text-xs text-slate-500">
                   Showing {visibleTasks.length} of {counts.all} task
                   {counts.all !== 1 ? "s" : ""}
                 </p>
@@ -371,19 +416,19 @@ function Home() {
                         role="tab"
                         aria-selected={active}
                         onClick={() => setStatusFilter(f.key)}
-                        className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                          active
-                            ? "bg-slate-800 text-white"
-                            : "text-slate-400 hover:text-slate-200"
-                        }`}
+                        className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${active
+                          ? "bg-slate-800 text-white"
+                          : "text-slate-400 hover:text-slate-200"
+                          }`}
                       >
                         {f.label}
                         <span
-                          className={`rounded px-1.5 text-[10px] ${
-                            active ? "bg-slate-700 text-slate-200" : "text-slate-500"
-                          }`}
+                          className={`rounded px-1.5 text-[10px] ${active
+                            ? "bg-slate-700 text-slate-200"
+                            : "text-slate-500"
+                            }`}
                         >
-                          {counts[f.key]}
+                          {f.key === "all" ? counts.all : counts[f.key] || 0}
                         </span>
                       </button>
                     );
@@ -412,7 +457,7 @@ function Home() {
                 }}
               />
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {visibleTasks.map((taskItem) => (
                   <ManagerTaskCard
                     key={taskItem._id || taskItem.id}
@@ -434,7 +479,6 @@ function Home() {
         subtitle="Describe the work, choose who does it and where."
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ---- Task information ---- */}
           <Panel>
             <SectionTitle
               icon={FileText}
@@ -476,7 +520,6 @@ function Home() {
             </div>
           </Panel>
 
-          {/* ---- Assignment ---- */}
           <Panel>
             <SectionTitle
               icon={UserCheck}
@@ -575,7 +618,6 @@ function Home() {
             </div>
           </Panel>
 
-          {/* ---- Site location (optional) ---- */}
           <Panel>
             <SectionTitle
               icon={MapPin}
@@ -632,7 +674,9 @@ function Home() {
                     <option value={50}>50 m, very small area</option>
                     <option value={100}>100 m, single building</option>
                     <option value={250}>250 m, small campus or ground</option>
-                    <option value={500}>500 m, recommended for large sites</option>
+                    <option value={500}>
+                      500 m, recommended for large sites
+                    </option>
                     <option value={1000}>1 km, wide area</option>
                   </select>
                 </div>
@@ -640,7 +684,6 @@ function Home() {
             )}
           </Panel>
 
-          {/* ---- Error + actions ---- */}
           {formError && (
             <div
               role="alert"
@@ -705,18 +748,24 @@ function Home() {
               </div>
 
               <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                {selectedTask.description || "No description provided for this task."}
+                {selectedTask.description ||
+                  "No description provided for this task."}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <InfoBox title="Assigned workers">
                 {getWorkers(selectedTask).length === 0 ? (
-                  <p className="text-sm font-medium text-slate-200">Unassigned</p>
+                  <p className="text-sm font-medium text-slate-200">
+                    Unassigned
+                  </p>
                 ) : (
                   <div className="mt-1 max-h-32 space-y-2 overflow-y-auto">
                     {getWorkers(selectedTask).map((w, i) => (
-                      <div key={getId(w) || i} className="flex items-center gap-2">
+                      <div
+                        key={getId(w) || i}
+                        className="flex items-center gap-2"
+                      >
                         <Avatar user={w} size="w-6 h-6" />
                         <span className="truncate text-sm text-slate-200">
                           {w.name}
@@ -766,26 +815,28 @@ function Home() {
               </p>
 
               {hasCoords && (
-              <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-slate-800 pt-3">
-                <div>
-                  <dt className="text-[11px] text-slate-500">Latitude</dt>
-                  <dd className="mt-0.5 text-xs text-slate-300">
-                    {selectedLoc?.latitude || "N/A"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] text-slate-500">Longitude</dt>
-                  <dd className="mt-0.5 text-xs text-slate-300">
-                    {selectedLoc?.longitude || "N/A"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] text-slate-500">Check-in radius</dt>
-                  <dd className="mt-0.5 text-xs text-slate-300">
-                    {selectedLoc?.radiusInMeters || 100} m
-                  </dd>
-                </div>
-              </dl>
+                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-slate-800 pt-3">
+                  <div>
+                    <dt className="text-[11px] text-slate-500">Latitude</dt>
+                    <dd className="mt-0.5 text-xs text-slate-300">
+                      {selectedLoc?.latitude || "N/A"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] text-slate-500">Longitude</dt>
+                    <dd className="mt-0.5 text-xs text-slate-300">
+                      {selectedLoc?.longitude || "N/A"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] text-slate-500">
+                      Check-in radius
+                    </dt>
+                    <dd className="mt-0.5 text-xs text-slate-300">
+                      {selectedLoc?.radiusInMeters || 100} m
+                    </dd>
+                  </div>
+                </dl>
               )}
             </div>
 
@@ -809,14 +860,13 @@ function Home() {
 
 function Avatar({ user, size = "w-8 h-8" }) {
   const [failed, setFailed] = useState(false);
-  // Change the field name here if your backend uses a different one
-  const pic = user.profilePic || user.avatar || user.image || user.photo;
+  const pic = user?.profilePic || user?.avatar || user?.image || user?.photo;
 
   if (pic && !failed) {
     return (
       <img
         src={pic}
-        alt={user.name}
+        alt={user?.name || "User"}
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
@@ -825,7 +875,7 @@ function Avatar({ user, size = "w-8 h-8" }) {
     );
   }
 
-  const initials = (user.name || "?")
+  const initials = (user?.name || "?")
     .split(" ")
     .map((word) => word[0])
     .slice(0, 2)
@@ -841,7 +891,6 @@ function Avatar({ user, size = "w-8 h-8" }) {
   );
 }
 
-// memo: only the row that changes re-renders, so long lists stay smooth
 const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   const id = getId(user);
   const disabled = isManager(user);
@@ -849,13 +898,12 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
   return (
     <tr
       onClick={() => !disabled && onToggle(id)}
-      className={`border-t border-slate-800 transition-colors ${
-        disabled
-          ? "cursor-not-allowed opacity-50"
-          : checked
-            ? "cursor-pointer bg-sky-500/10"
-            : "cursor-pointer hover:bg-slate-800/50"
-      }`}
+      className={`border-t border-slate-800 transition-colors ${disabled
+        ? "cursor-not-allowed opacity-50"
+        : checked
+          ? "cursor-pointer bg-sky-500/10"
+          : "cursor-pointer hover:bg-slate-800/50"
+        }`}
     >
       <td className="w-10 px-3 py-2">
         <input
@@ -885,7 +933,7 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
         {user.role || "Worker"}
         {disabled && (
           <span className="block text-[10px] normal-case text-slate-500">
-            Managers can't be assigned
+            Managers can&apos;t be assigned
           </span>
         )}
       </td>
@@ -895,31 +943,49 @@ const WorkerRow = memo(function WorkerRow({ user, checked, onToggle }) {
 
 const TONES = {
   slate: { value: "text-white", icon: "text-slate-300", bg: "bg-slate-800" },
-  amber: { value: "text-amber-400", icon: "text-amber-400", bg: "bg-amber-500/10" },
+  amber: {
+    value: "text-amber-400",
+    icon: "text-amber-400",
+    bg: "bg-amber-500/10",
+  },
   sky: { value: "text-sky-400", icon: "text-sky-400", bg: "bg-sky-500/10" },
   emerald: {
     value: "text-emerald-400",
     icon: "text-emerald-400",
     bg: "bg-emerald-500/10",
   },
+  rose: {
+    value: "text-rose-400",
+    icon: "text-rose-400",
+    bg: "bg-rose-500/10",
+  },
 };
 
 function StatCard({ label, value, hint, icon: Icon, tone = "slate" }) {
-  const t = TONES[tone];
+  const t = TONES[tone] || TONES.slate;
+
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#111827] p-4 sm:p-5">
-      <div className="flex items-start justify-between">
-        <p className="text-sm text-slate-400">{label}</p>
+    <div className="flex min-w-0 flex-col rounded-xl border border-slate-800 bg-[#111827] p-3 sm:p-4 lg:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 truncate text-[11px] font-medium text-slate-400 sm:text-xs lg:text-sm">
+          {label}
+        </p>
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-lg ${t.bg}`}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 lg:h-9 lg:w-9 ${t.bg}`}
         >
-          <Icon className={`h-4 w-4 ${t.icon}`} />
+          <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${t.icon}`} />
         </div>
       </div>
-      <p className={`mt-3 text-3xl font-semibold tabular-nums ${t.value}`}>
-        {value}
+
+      <p
+        className={`mt-2 text-xl font-semibold tabular-nums tracking-tight sm:mt-3 sm:text-2xl lg:text-3xl ${t.value}`}
+      >
+        {value ?? 0}
       </p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+
+      <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-500 sm:text-xs">
+        {hint}
+      </p>
     </div>
   );
 }
@@ -932,7 +998,13 @@ function Panel({ children }) {
   );
 }
 
-function SectionTitle({ icon: Icon, title, subtitle, action, className = "mb-4" }) {
+function SectionTitle({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+  className = "mb-4",
+}) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
@@ -947,7 +1019,6 @@ function SectionTitle({ icon: Icon, title, subtitle, action, className = "mb-4" 
   );
 }
 
-// On/off switch
 function Toggle({ checked, onChange, label }) {
   return (
     <button
@@ -956,14 +1027,12 @@ function Toggle({ checked, onChange, label }) {
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-        checked ? "bg-sky-600" : "bg-slate-700"
-      }`}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${checked ? "bg-sky-600" : "bg-slate-700"
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-[22px]" : "translate-x-0.5"
-        }`}
+        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[22px]" : "translate-x-0.5"
+          }`}
       />
     </button>
   );
