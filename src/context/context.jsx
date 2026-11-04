@@ -143,50 +143,73 @@ const ContextProvider = ({ children }) => {
 
       try {
         if (userRole === "manager") {
-          const [tasks, verifications, workers, freeWorkers, invites, subscription, plans] =
-            await Promise.all([
-              getAllTasks(),
-              getVerificationStatusAPI(),
-              getMyWorkers(),
-              getAvailableWorkers(),
-              getManagerInvitations(),
-              getMySubscription(),
-              getAllPlans(),
-            ]);
-          setAllTasks(tasks || []);
-          setVerificationStatus(verifications || []);
-          setMyWorkers(workers || []);
-          setAvailableWorkers(freeWorkers || []);
-          setManagerInvitations(invites || []);
-          setMySubscription(subscription || []);
-          setAllPlans(plans || []);
+          const results = await Promise.allSettled([
+            getAllTasks(),
+            getVerificationStatusAPI(),
+            getMyWorkers(),
+            getAvailableWorkers(),
+            getManagerInvitations(),
+            getMySubscription(),
+            getAllPlans(),
+          ]);
+
+          const value = (i) =>
+            results[i].status === "fulfilled" ? results[i].value : null;
+
+          results.forEach((r, i) => {
+            if (r.status === "rejected") {
+              console.error("Manager fetch failed at", i, r.reason);
+            }
+          });
+
+          setAllTasks(value(0) || []);
+          setVerificationStatus(value(1) || []);
+          setMyWorkers(value(2) || []);
+          setAvailableWorkers(value(3) || []);
+          setManagerInvitations(value(4) || []);
+
+          // subscription: object ya null — array mat banao
+          // agar API { subscription: {...} } bhejti ho to:
+          // const raw = value(5);
+          // setMySubscription(raw?.subscription ?? raw ?? null);
+          setMySubscription(value(5) ?? null);
+
+          setAllPlans(value(6) || []);
           await fetchReviewedTasks();
         }
 
         if (userRole === "worker") {
-          const [tasks, list, invites] = await Promise.all([
+          const results = await Promise.allSettled([
             getMyTasks(),
             getNotifications(),
             getWorkerInvitations(),
           ]);
-          setMyTasks(tasks || []);
-          setNotifications(list || []);
-          setMyInvitations(invites || []);
+          const value = (i) =>
+            results[i].status === "fulfilled" ? results[i].value : null;
+
+          setMyTasks(value(0) || []);
+          setNotifications(value(1) || []);
+          setMyInvitations(value(2) || []);
           await fetchReviewedTasks();
         }
 
         if (userRole === "admin") {
-          const [infos, users, requests] = await Promise.all([
+          const results = await Promise.allSettled([
             getAdminInfos(),
             getAllUsers(),
             getManagerRequests(),
           ]);
-          setAdminInfos(infos || []);
-          setAllUsers(users || []);
-          setManagerRequests(getPendingManagerRequests(requests));
+          const value = (i) =>
+            results[i].status === "fulfilled" ? results[i].value : null;
+
+          setAdminInfos(value(0) || []);
+          setAllUsers(value(1) || []);
+          setManagerRequests(getPendingManagerRequests(value(2)));
         }
 
         lastFetchRef.current = Date.now();
+      } catch (error) {
+        console.error("fetchRoleData error:", error);
       } finally {
         if (showLoader) setIsLoading(false);
       }
@@ -601,7 +624,7 @@ const ContextProvider = ({ children }) => {
           setIsLoading,
 
           isRefreshing,
-          setIsRefreshing,  
+          setIsRefreshing,
 
           adminInfos,
           setAdminInfos,
