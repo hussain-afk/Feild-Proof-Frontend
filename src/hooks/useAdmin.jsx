@@ -2,6 +2,7 @@ import {
   updateProfileByAdmin,
   updateRequestStatus,
   banUser,
+  addPlan
 } from "../api/admin.api.js";
 import toast from "react-hot-toast";
 import { useContext } from "react";
@@ -80,10 +81,29 @@ const useAdmin = () => {
     }
   };
 
+  const handleAddPlan = async (planData) => {
+    try {
+      setIsLoading(true);
+      const response = await addPlan(planData);
+      toast.success("Plan added successfully");
+      return response;
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to add plan"
+      );
+      console.error("Error adding plan:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return {
     updateUserProfileByAdmin,
     updateManagerRequestStatus,
     handleBanUser,
+    handleAddPlan,
   };
 };
 

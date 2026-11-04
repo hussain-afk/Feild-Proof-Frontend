@@ -173,7 +173,7 @@ const useAuth = () => {
         try {
             setIsLoading(true)
             const response = await deleteUserByAdmin(userId)
-            Toast.success('User deleted successfully')
+            Toast.success(response?.message || 'User deleted successfully')
             return response
         } catch (error) {
             console.error('Error deleting user:', error)

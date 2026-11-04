@@ -18,6 +18,15 @@ export const getAdminInfos = async () => {
     }
 }
 
+export const getAllPlans = async () => {
+    try {
+        const response = await api.get('/all-plans');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
 export const updateProfileByAdmin = async (userId, name, email, phone, hourlyRate, role) => {
     try {
         const response = await api.put(`/update-user/${userId}`, {
@@ -27,6 +36,15 @@ export const updateProfileByAdmin = async (userId, name, email, phone, hourlyRat
             hourlyRate,
             role
         });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}
+
+export const addPlan = async (planData) => {
+    try {
+        const response = await api.post('/add-plan', planData);
         return response.data;
     } catch (error) {
         throw error.response?.data || error;

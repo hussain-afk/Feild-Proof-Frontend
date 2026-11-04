@@ -94,6 +94,13 @@ function AdminSidebar() {
           end: false,
         },
         {
+          id: "add-plan",
+          label: "Add Plan",
+          path: "/admin/add-plan",
+          icon: UserPlus,
+          end: false,
+        },
+        {
           id: "profile",
           label: "Profile",
           path: `/admin/me/${user?._id}`,

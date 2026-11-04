@@ -29,6 +29,7 @@ import {
   PlayCircle,
   XCircle,
 } from "lucide-react";
+import PlanBanner from "../../PlanBanner.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Constants and helpers                                                */
@@ -328,7 +329,7 @@ function Home() {
               Create task
             </button>
           </header>
-
+          <PlanBanner />
           {/* ================= STATS ================= */}
           <section
             aria-label="Task summary"

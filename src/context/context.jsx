@@ -17,11 +17,12 @@ import {
   getMyApprovedTasks,
   getMyRejectedTasks,
 } from "../api/verification.api.js";
-import { getAdminInfos, getManagerRequests } from "../api/admin.api.js";
+import { getAdminInfos, getManagerRequests, getAllPlans } from "../api/admin.api.js";
 import {
   getWorkerInvitations,
   getManagerInvitations,
 } from "../api/invitation.api.js";
+import { getMySubscription } from "../api/billing.api.js";
 import { socket } from "../services/socket.js";
 
 import Modal from "../ui/Modal.jsx";
@@ -75,7 +76,11 @@ const ContextProvider = ({ children }) => {
   const [availableWorkers, setAvailableWorkers] = useState([]);
   const [myInvitations, setMyInvitations] = useState([]);
   const [managerInvitations, setManagerInvitations] = useState([]);
+  const [mySubscription, setMySubscription] = useState(null);
+  const [allPlans, setAllPlans] = useState([]);
 
+  console.log("allPlans", allPlans);
+  // console.log("mySubscription", mySubscription);
   // console.log(availableWorkers," availableWorkers");
   // console.log(managerInvitations," managerInvitations");
   // console.log(myInvitations," myInvitations");
@@ -138,19 +143,23 @@ const ContextProvider = ({ children }) => {
 
       try {
         if (userRole === "manager") {
-          const [tasks, verifications, workers, freeWorkers, invites] =
+          const [tasks, verifications, workers, freeWorkers, invites, subscription, plans] =
             await Promise.all([
               getAllTasks(),
               getVerificationStatusAPI(),
               getMyWorkers(),
               getAvailableWorkers(),
               getManagerInvitations(),
+              getMySubscription(),
+              getAllPlans(),
             ]);
           setAllTasks(tasks || []);
           setVerificationStatus(verifications || []);
           setMyWorkers(workers || []);
           setAvailableWorkers(freeWorkers || []);
           setManagerInvitations(invites || []);
+          setMySubscription(subscription || []);
+          setAllPlans(plans || []);
           await fetchReviewedTasks();
         }
 
@@ -303,6 +312,8 @@ const ContextProvider = ({ children }) => {
       setAvailableWorkers([]);
       setMyInvitations([]);
       setManagerInvitations([]);
+      setMySubscription(null);
+      setAllPlans([]);
     }
     prevUserIdRef.current = userId || null;
   }, [userId]);
@@ -615,6 +626,12 @@ const ContextProvider = ({ children }) => {
 
           managerInvitations,
           setManagerInvitations,
+
+          mySubscription,
+          setMySubscription,
+
+          allPlans,
+          setAllPlans,
 
           refresh,
           syncUser,

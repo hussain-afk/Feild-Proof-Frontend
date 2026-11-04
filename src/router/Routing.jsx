@@ -21,6 +21,8 @@ const LandingPage = lazy(() => import("../ui/LandingPage.jsx"));
 const PendingPage = lazy(() => import("../ui/pendingManager/Pending.jsx"));
 const AllRequests = lazy(() => import("../ui/admin/pages/AllRequests.jsx"));
 const BannedPage = lazy(() => import("../ui/banned/Banned.jsx"));
+const AddPlanPage = lazy(() => import("../ui/admin/pages/AddPlanPage.jsx"));
+const AllPlansPage = lazy(() => import("../ui/manager/pages/AllPlansPage.jsx"));
 const MaintenanceSettings = lazy(() =>
   import("../ui/admin/pages/MaintenanceSettingPage.jsx")
 );
@@ -205,6 +207,10 @@ const Routing = () => {
           element={<Page><AvalaibleWorkersPage /></Page>}
         />
         <Route
+          path="plans"
+          element={<Page><AllPlansPage /></Page>}
+        />
+        <Route
           path="pending-invites"
           element={<Page><ManagerPendingInvitesPage /></Page>}
         />
@@ -230,6 +236,7 @@ const Routing = () => {
         <Route path="users" element={<Page><AdminUsersPage /></Page>} />
         <Route path="maintenance" element={<Page><MaintenanceSettings /></Page>} />
         <Route path="requests" element={<Page><AllRequests /></Page>} />
+        <Route path="add-plan" element={<Page><AddPlanPage /></Page>} />
         <Route path="me/:id" element={<Page><ProfilePage /></Page>} />
       </Route>
     </Routes>
