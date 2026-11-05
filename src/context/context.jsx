@@ -79,7 +79,7 @@ const ContextProvider = ({ children }) => {
   const [mySubscription, setMySubscription] = useState(null);
   const [allPlans, setAllPlans] = useState([]);
 
-  console.log("allPlans", allPlans);
+  // console.log("allPlans", allPlans);
   // console.log("mySubscription", mySubscription);
   // console.log(availableWorkers," availableWorkers");
   // console.log(managerInvitations," managerInvitations");
