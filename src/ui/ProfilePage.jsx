@@ -5,6 +5,7 @@ import { context } from "../context/context.jsx";
 import useAuth from "../hooks/useAuth.jsx";
 import VerifyEmailModal from "./VerifyEmailModal.jsx";
 import LoadingState from "./LoadingState.jsx";
+import { dismissPendingVerification } from "../services/verification.storage.js";
 
 import {
   User,
@@ -25,7 +26,6 @@ import {
   CalendarDays,
   BadgeCheck,
   Crown,
-  Shield,
   Briefcase,
   Users,
   Sparkles,
@@ -424,7 +424,6 @@ const ProfilePage = () => {
   const userId = id || user?._id;
 
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const [pendingChecked, setPendingChecked] = useState(false);
 
   const [form, setForm] = useState(() => fromUser(user));
   const [avatar, setAvatar] = useState(null);
@@ -445,23 +444,11 @@ const ProfilePage = () => {
   useEffect(() => {
     if (!user) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(fromUser(user));
     setAvatarPreview(user.avatar || null);
     setAvatar(null);
   }, [user]);
-
-  /* Check pending email verification */
-  // useEffect(() => {
-  //   if (!user || pendingChecked) return;
-
-  //   setPendingChecked(true);
-
-  //   const pending = getPendingVerification(user.email);
-
-  //   if (pending && !pending.dismissed && !user.isVerified) {
-  //     setVerifyOpen(true);
-  //   }
-  // }, [user, pendingChecked]);
 
   /* Cleanup timers and preview URLs */
   useEffect(() => {
