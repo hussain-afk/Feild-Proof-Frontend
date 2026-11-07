@@ -47,10 +47,20 @@ const addIfNew = (list, item) =>
 
 const isSameUser = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
+// Promise.allSettled results mein koi 429 (Too Many Requests) hai?
+// Agar aapka api layer error ko wrap karta hai, to status wahan preserve karo.
+const hasRateLimit = (results) =>
+  results.some(
+    (r) =>
+      r.status === "rejected" &&
+      (r.reason?.response?.status === 429 || r.reason?.status === 429)
+  );
+
 const HOME = { manager: "/manager", admin: "/admin", worker: "/worker" };
 
-const MIN_REFRESH_GAP = 30 * 1000;
-const FALLBACK_POLL = 60 * 1000;
+const MIN_REFRESH_GAP = 30 * 1000; // focus/reconnect par itne se kam gap mein dobara fetch nahi
+const FALLBACK_POLL = 3 * 60 * 1000; // socket disconnect ho tabhi, aur kam az kam 3 minute baad
+const RATE_LIMIT_COOLDOWN = 60 * 1000; // 429 milne par 1 minute ruk jao
 
 /* ------------------------------------------------------------------ */
 /* Provider                                                             */
@@ -79,12 +89,6 @@ const ContextProvider = ({ children }) => {
   const [mySubscription, setMySubscription] = useState(null);
   const [allPlans, setAllPlans] = useState([]);
 
-  // console.log("allPlans", allPlans);
-  // console.log("mySubscription", mySubscription);
-  // console.log(availableWorkers," availableWorkers");
-  // console.log(managerInvitations," managerInvitations");
-  // console.log(myInvitations," myInvitations");
-
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -101,6 +105,11 @@ const ContextProvider = ({ children }) => {
   const prevUserIdRef = useRef(null);
   const navigateRef = useRef(navigate);
 
+  // Naye refs: request storm aur 429 se bachne ke liye
+  const cooldownUntilRef = useRef(0); // is waqt tak koi refresh nahi
+  const roleFetchRef = useRef(null); // chal rahe role-fetch ka promise (dedupe)
+  const initialUserRef = useRef(null); // StrictMode mein getCurrentUser do baar na jaye
+
   useEffect(() => {
     navigateRef.current = navigate;
   }, [navigate]);
@@ -113,10 +122,15 @@ const ContextProvider = ({ children }) => {
   // APPROVED + REJECTED TASKS
   // =========================
   const fetchReviewedTasks = useCallback(async () => {
-    const [approved, rejected] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       getMyApprovedTasks(),
       getMyRejectedTasks(),
     ]);
+    const [approved, rejected] = results;
+
+    if (hasRateLimit(results)) {
+      cooldownUntilRef.current = Date.now() + RATE_LIMIT_COOLDOWN;
+    }
 
     if (approved.status === "fulfilled") {
       setMyApprovedTasks(approved.value || []);
@@ -132,12 +146,16 @@ const ContextProvider = ({ children }) => {
   }, []);
 
   // =========================
-  // ROLE DATA
+  // ROLE DATA (actual fetching)
   // =========================
-  const fetchRoleData = useCallback(
+  const loadRoleData = useCallback(
     async (userRole, options = {}) => {
       const { showLoader = false } = options;
       if (!userRole) return;
+
+      // Fetch shuru hote hi time mark karo, taake socket connect par
+      // dobara foran refresh na chale
+      lastFetchRef.current = Date.now();
 
       if (showLoader) setIsLoading(true);
 
@@ -152,6 +170,10 @@ const ContextProvider = ({ children }) => {
             getMySubscription(),
             getAllPlans(),
           ]);
+
+          if (hasRateLimit(results)) {
+            cooldownUntilRef.current = Date.now() + RATE_LIMIT_COOLDOWN;
+          }
 
           const value = (i) =>
             results[i].status === "fulfilled" ? results[i].value : null;
@@ -168,7 +190,7 @@ const ContextProvider = ({ children }) => {
           setAvailableWorkers(value(3) || []);
           setManagerInvitations(value(4) || []);
 
-          // subscription: object ya null — array mat banao
+          // subscription: object ya null, array mat banao
           // agar API { subscription: {...} } bhejti ho to:
           // const raw = value(5);
           // setMySubscription(raw?.subscription ?? raw ?? null);
@@ -184,6 +206,11 @@ const ContextProvider = ({ children }) => {
             getNotifications(),
             getWorkerInvitations(),
           ]);
+
+          if (hasRateLimit(results)) {
+            cooldownUntilRef.current = Date.now() + RATE_LIMIT_COOLDOWN;
+          }
+
           const value = (i) =>
             results[i].status === "fulfilled" ? results[i].value : null;
 
@@ -199,6 +226,11 @@ const ContextProvider = ({ children }) => {
             getAllUsers(),
             getManagerRequests(),
           ]);
+
+          if (hasRateLimit(results)) {
+            cooldownUntilRef.current = Date.now() + RATE_LIMIT_COOLDOWN;
+          }
+
           const value = (i) =>
             results[i].status === "fulfilled" ? results[i].value : null;
 
@@ -215,6 +247,25 @@ const ContextProvider = ({ children }) => {
       }
     },
     [fetchReviewedTasks]
+  );
+
+  // Ek waqt mein ek hi role-fetch chalne do. Agar pehle se chal raha hai
+  // (startup, StrictMode, socket connect), to wohi promise wapas do.
+  const fetchRoleData = useCallback(
+    (userRole, options = {}) => {
+      if (!userRole) return Promise.resolve();
+
+      if (roleFetchRef.current?.role === userRole) {
+        return roleFetchRef.current.promise;
+      }
+
+      const promise = loadRoleData(userRole, options).finally(() => {
+        roleFetchRef.current = null;
+      });
+      roleFetchRef.current = { role: userRole, promise };
+      return promise;
+    },
+    [loadRoleData]
   );
 
   // =========================
@@ -245,6 +296,9 @@ const ContextProvider = ({ children }) => {
 
   const refresh = useCallback(async () => {
     if (!role || isFetchingRef.current) return;
+    // 429 ke baad cooldown khatam hone tak koi request nahi
+    if (Date.now() < cooldownUntilRef.current) return;
+
     isFetchingRef.current = true;
     setIsRefreshing(true);
     try {
@@ -277,7 +331,11 @@ const ContextProvider = ({ children }) => {
       try {
         setIsLoading(true);
 
-        const currentUser = await getCurrentUser();
+        // StrictMode (dev) mein effect do baar chalta hai, magar request ek hi jaye
+        if (!initialUserRef.current) {
+          initialUserRef.current = getCurrentUser();
+        }
+        const currentUser = await initialUserRef.current;
         if (cancelled) return;
 
         setUser(currentUser);
@@ -337,6 +395,10 @@ const ContextProvider = ({ children }) => {
       setManagerInvitations([]);
       setMySubscription(null);
       setAllPlans([]);
+
+      // Naye login par purana cache/cooldown na chale
+      initialUserRef.current = null;
+      cooldownUntilRef.current = 0;
     }
     prevUserIdRef.current = userId || null;
   }, [userId]);
@@ -361,8 +423,13 @@ const ContextProvider = ({ children }) => {
     document.addEventListener("visibilitychange", syncIfStale);
     window.addEventListener("focus", syncIfStale);
 
+    // Sirf tab jab socket connected nahi, aur data kaafi purana ho
     const fallback = setInterval(() => {
-      if (!socket.connected && document.visibilityState === "visible") {
+      if (
+        !socket.connected &&
+        document.visibilityState === "visible" &&
+        Date.now() - lastFetchRef.current >= FALLBACK_POLL
+      ) {
         refresh();
       }
     }, FALLBACK_POLL);
@@ -380,9 +447,17 @@ const ContextProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) return;
 
+    // Pehli connection par data pehle se aa raha hota hai, refresh nahi chahiye.
+    // Sirf reconnect par (jab kuch events miss ho sakte hain) refresh karo.
+    let firstConnect = true;
     const handleConnect = () => {
       socket.emit("join_room", userId);
-      if (Date.now() - lastFetchRef.current > 5000) refresh();
+
+      if (firstConnect) {
+        firstConnect = false;
+        return;
+      }
+      if (Date.now() - lastFetchRef.current > MIN_REFRESH_GAP) refresh();
     };
 
     const handleNewTask = (data = {}) => {
@@ -400,10 +475,24 @@ const ContextProvider = ({ children }) => {
       toast.success(data.message || "New task assigned!");
     };
 
+    // Sirf tasks dobara lo (poora refresh nahi, jo 10 requests bhejta hai)
+    const reloadTasks = async () => {
+      if (Date.now() < cooldownUntilRef.current) return;
+      try {
+        if (roleRef.current === "worker") {
+          setMyTasks((await getMyTasks()) || []);
+        } else if (roleRef.current === "manager") {
+          setAllTasks((await getAllTasks()) || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     let softTimer;
     const softRefresh = () => {
       clearTimeout(softTimer);
-      softTimer = setTimeout(refresh, 400);
+      softTimer = setTimeout(reloadTasks, 800);
     };
 
     const handleTaskCreated = (data = {}) => {
@@ -454,11 +543,15 @@ const ContextProvider = ({ children }) => {
       syncUser(data.user);
     };
 
+    // Debounce + cooldown guard: 429 ke dauran reload nahi chalenge
     const debounce = (fn) => {
       let t;
       const run = () => {
         clearTimeout(t);
-        t = setTimeout(fn, 500);
+        t = setTimeout(() => {
+          if (Date.now() < cooldownUntilRef.current) return;
+          fn();
+        }, 500);
       };
       run.cancel = () => clearTimeout(t);
       return run;

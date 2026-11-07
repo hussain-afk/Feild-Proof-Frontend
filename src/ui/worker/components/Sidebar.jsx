@@ -12,6 +12,7 @@ import {
   Menu,
   ShieldCheck,
   X,
+  MessageCircle,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -72,6 +73,7 @@ function WorkerSidebar() {
         title: "Team",
         items: [
           { id: "my-invites", label: "My invites", path: "/worker/my-invites", icon: Mail, end: false, needsTeam: false },
+          { id: "chat", label: "Chat", path: "/worker/chat", icon: MessageCircle, end: false, needsTeam: true },
         ],
       },
       {

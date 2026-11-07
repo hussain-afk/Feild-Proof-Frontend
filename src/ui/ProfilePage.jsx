@@ -1,4 +1,3 @@
-
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { context } from "../context/context.jsx";
@@ -43,6 +42,7 @@ import {
 /* ------------------------------------------------------------------ */
 
 const MAX_AVATAR_MB = 5;
+const MIN_PASSWORD_LENGTH = 6;
 
 const inputClass =
   "w-full h-12 rounded-xl bg-[#0b1220] border border-slate-800/90 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all duration-200 hover:border-slate-700 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10";
@@ -125,36 +125,11 @@ function getPasswordStrength(password) {
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
   const levels = [
-    {
-      label: "Too weak",
-      color: "bg-rose-400",
-      text: "text-rose-400",
-      width: "w-1/4",
-    },
-    {
-      label: "Weak",
-      color: "bg-rose-400",
-      text: "text-rose-400",
-      width: "w-1/4",
-    },
-    {
-      label: "Fair",
-      color: "bg-amber-400",
-      text: "text-amber-400",
-      width: "w-2/4",
-    },
-    {
-      label: "Good",
-      color: "bg-sky-400",
-      text: "text-sky-400",
-      width: "w-3/4",
-    },
-    {
-      label: "Strong",
-      color: "bg-emerald-400",
-      text: "text-emerald-400",
-      width: "w-full",
-    },
+    { label: "Too weak", color: "bg-rose-400", text: "text-rose-400", width: "w-1/4" },
+    { label: "Weak", color: "bg-rose-400", text: "text-rose-400", width: "w-1/4" },
+    { label: "Fair", color: "bg-amber-400", text: "text-amber-400", width: "w-2/4" },
+    { label: "Good", color: "bg-sky-400", text: "text-sky-400", width: "w-3/4" },
+    { label: "Strong", color: "bg-emerald-400", text: "text-emerald-400", width: "w-full" },
   ];
 
   return {
@@ -167,12 +142,7 @@ function getPasswordStrength(password) {
 /* Reusable UI Components                                               */
 /* ------------------------------------------------------------------ */
 
-function SectionHeading({
-  icon: Icon,
-  title,
-  subtitle,
-  badge,
-}) {
+function SectionHeading({ icon: Icon, title, subtitle, badge }) {
   return (
     <div className="mb-6 flex items-start gap-3.5">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-500/15 bg-sky-500/10">
@@ -200,13 +170,7 @@ function SectionHeading({
   );
 }
 
-function FormSection({
-  icon: Icon,
-  title,
-  subtitle,
-  badge,
-  children,
-}) {
+function FormSection({ icon: Icon, title, subtitle, badge, children }) {
   return (
     <section className="border-b border-slate-800/80 p-5 sm:p-7">
       <SectionHeading
@@ -238,16 +202,10 @@ function Field({
       >
         {label}
 
-        {required && (
-          <span className="ml-1 text-rose-400">*</span>
-        )}
+        {required && <span className="ml-1 text-rose-400">*</span>}
       </label>
 
-      {hint && (
-        <p className="mb-2 text-xs text-slate-500">
-          {hint}
-        </p>
-      )}
+      {hint && <p className="mb-2 text-xs text-slate-500">{hint}</p>}
 
       <div className="relative">
         <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors" />
@@ -255,9 +213,7 @@ function Field({
         <input
           id={id}
           required={required}
-          className={`${inputClass} pl-10 ${
-            trailing ? "pr-12" : "pr-3.5"
-          }`}
+          className={`${inputClass} pl-10 ${trailing ? "pr-12" : "pr-3.5"}`}
           {...inputProps}
         />
 
@@ -267,12 +223,7 @@ function Field({
   );
 }
 
-function SummaryRow({
-  icon: Icon,
-  label,
-  value,
-  extra,
-}) {
+function SummaryRow({ icon: Icon, label, value, extra }) {
   return (
     <div className="flex items-start gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-[#0b1220]">
@@ -303,7 +254,7 @@ function FormMessage({ message }) {
   return (
     <div
       role={success ? "status" : "alert"}
-      className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${
+      className={`mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${
         success
           ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
           : "border-rose-500/20 bg-rose-500/[0.07] text-rose-300"
@@ -311,9 +262,7 @@ function FormMessage({ message }) {
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
 
-      <p className="leading-relaxed">
-        {message.text}
-      </p>
+      <p className="leading-relaxed">{message.text}</p>
     </div>
   );
 }
@@ -349,9 +298,7 @@ function SubscriptionCard({ subscription }) {
                 {sub.planLabel}
               </p>
 
-              <p className="mt-0.5 text-xs text-slate-500">
-                Current plan
-              </p>
+              <p className="mt-0.5 text-xs text-slate-500">Current plan</p>
             </div>
           </div>
 
@@ -376,9 +323,7 @@ function SubscriptionCard({ subscription }) {
             </span>
 
             <span className="font-medium text-slate-300">
-              {sub.limit > 0
-                ? `${sub.limit} workers`
-                : "Not set"}
+              {sub.limit > 0 ? `${sub.limit} workers` : "Not set"}
             </span>
           </div>
 
@@ -413,12 +358,7 @@ function SubscriptionCard({ subscription }) {
 const ProfilePage = () => {
   const { updateProfile } = useAuth();
 
-  const {
-    user,
-    setUser,
-    isLoading,
-    mySubscription,
-  } = useContext(context);
+  const { user, setUser, isLoading, mySubscription } = useContext(context);
 
   const { id } = useParams();
   const userId = id || user?._id;
@@ -427,9 +367,7 @@ const ProfilePage = () => {
 
   const [form, setForm] = useState(() => fromUser(user));
   const [avatar, setAvatar] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(
-    user?.avatar || null
-  );
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -500,10 +438,7 @@ const ProfilePage = () => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      showMessage(
-        "error",
-        "Please choose an image file (JPG, PNG or WEBP)."
-      );
+      showMessage("error", "Please choose an image file (JPG, PNG or WEBP).");
       return;
     }
 
@@ -554,6 +489,16 @@ const ProfilePage = () => {
 
     if (!isDirty || isSubmitting) return;
 
+    // Password sirf tab check hota hai jab user ne khud naya password likha ho.
+    // Khali password ka matlab hai "password nahi badalna".
+    if (form.password && form.password.length < MIN_PASSWORD_LENGTH) {
+      showMessage(
+        "error",
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setMessage(null);
 
@@ -564,7 +509,7 @@ const ProfilePage = () => {
         form.email,
         form.phone,
         form.hourlyRate,
-        form.password,
+        form.password, // khali ho to updateProfile / backend ko ignore karna chahiye
         avatar
       );
 
@@ -578,11 +523,7 @@ const ProfilePage = () => {
       setAvatar(null);
       setShowPassword(false);
 
-      showMessage(
-        "success",
-        "Your profile has been updated successfully.",
-        true
-      );
+      showMessage("success", "Your profile has been updated successfully.", true);
     } catch (error) {
       showMessage(
         "error",
@@ -606,10 +547,7 @@ const ProfilePage = () => {
         setCopied(false);
       }, 1800);
     } catch {
-      showMessage(
-        "error",
-        "Unable to copy ID. Please copy it manually."
-      );
+      showMessage("error", "Unable to copy ID. Please copy it manually.");
     }
   };
 
@@ -661,8 +599,8 @@ const ProfilePage = () => {
             </h1>
 
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-400">
-              Manage your personal information, update your profile
-              and keep your account secure.
+              Manage your personal information, update your profile and keep
+              your account secure.
             </p>
           </div>
 
@@ -722,9 +660,7 @@ const ProfilePage = () => {
                     >
                       <Camera className="h-4 w-4" />
 
-                      <span className="sr-only">
-                        Change profile photo
-                      </span>
+                      <span className="sr-only">Change profile photo</span>
 
                       <input
                         id="avatar-input"
@@ -895,7 +831,8 @@ const ProfilePage = () => {
                   </p>
 
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Use a strong password and keep your email address up to date.
+                    Use a strong password and keep your email address up to
+                    date.
                   </p>
                 </div>
               </div>
@@ -1030,12 +967,11 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   placeholder="Enter a new password"
                   autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
                   trailing={
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowPassword((prev) => !prev)
-                      }
+                      onClick={() => setShowPassword((prev) => !prev)}
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
@@ -1052,7 +988,8 @@ const ProfilePage = () => {
 
                 {!form.password && (
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Leave this field empty if you do not want to change your password.
+                    Leave this field empty if you do not want to change your
+                    password.
                   </p>
                 )}
 
@@ -1063,7 +1000,9 @@ const ProfilePage = () => {
                         Password strength
                       </span>
 
-                      <span className={`text-xs font-semibold ${strength.text}`}>
+                      <span
+                        className={`text-xs font-semibold ${strength.text}`}
+                      >
                         {strength.label}
                       </span>
                     </div>
@@ -1082,8 +1021,9 @@ const ProfilePage = () => {
                     </div>
 
                     <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
-                      Use at least 8 characters, uppercase and lowercase letters,
-                      numbers and special characters.
+                      Use at least {MIN_PASSWORD_LENGTH} characters. Longer
+                      passwords with uppercase and lowercase letters, numbers
+                      and special characters are stronger.
                     </p>
                   </div>
                 )}
@@ -1108,9 +1048,7 @@ const ProfilePage = () => {
 
                   <div>
                     <p className="text-xs font-semibold text-slate-300">
-                      {isDirty
-                        ? "Unsaved changes"
-                        : "Everything is up to date"}
+                      {isDirty ? "Unsaved changes" : "Everything is up to date"}
                     </p>
 
                     <p className="mt-0.5 text-[10px] text-slate-500">

@@ -23,6 +23,8 @@ const AllRequests = lazy(() => import("../ui/admin/pages/AllRequests.jsx"));
 const BannedPage = lazy(() => import("../ui/banned/Banned.jsx"));
 const AddPlanPage = lazy(() => import("../ui/admin/pages/AddPlanPage.jsx"));
 const AllPlansPage = lazy(() => import("../ui/manager/pages/AllPlansPage.jsx"));
+const ManagerChatPage = lazy(() => import("../ui/manager/pages/ChatPage.jsx"));
+const WorkerChatPage = lazy(() => import("../ui/worker/pages/ChatPage.jsx"));
 const MaintenanceSettings = lazy(() =>
   import("../ui/admin/pages/MaintenanceSettingPage.jsx")
 );
@@ -167,6 +169,14 @@ const Routing = () => {
             </Page>
           }
         />
+        <Route
+          path="chat"
+          element={
+            <Page>
+              <WorkerChatPage />
+            </Page>
+          }
+        />
 
         {/* Baaki pages — team zaroori */}
         <Route element={<RequireWorkerTeam user={user} />}>
@@ -209,6 +219,10 @@ const Routing = () => {
         <Route
           path="plans"
           element={<Page><AllPlansPage /></Page>}
+        />
+        <Route
+          path="chat"
+          element={<Page><ManagerChatPage /></Page>}
         />
         <Route
           path="pending-invites"
