@@ -217,7 +217,15 @@ function ChatPanel({ otherUserId, otherName, myUserId }) {
                     <div className="w-7 shrink-0">
                       {last && (
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/15 text-[10px] font-semibold text-sky-300">
-                          {getInitials(otherName)}
+                          {msg.sender?.avatar ? (
+                            <img
+                              src={msg.sender.avatar}
+                              alt={`${otherName || "User"} avatar`}
+                              className="h-full w-full rounded-full object-cover"
+                            />
+                          ) : (
+                            getInitials(otherName)
+                          )}
                         </div>
                       )}
                     </div>

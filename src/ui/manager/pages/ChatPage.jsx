@@ -131,7 +131,15 @@ function ManagerChatPage() {
                       <span
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${colorFor(id)}`}
                       >
-                        {(w.name || "?").charAt(0).toUpperCase()}
+                        {w.avatar ? (
+                          <img
+                            src={w.avatar}
+                            alt={`${w.name || "Worker"} avatar`}
+                            className="h-full w-full rounded-2xl object-cover"
+                          />
+                        ) : (
+                          (w.name || "?").charAt(0).toUpperCase()
+                        )}
                       </span>
                       <span className="min-w-0">
                         <span
