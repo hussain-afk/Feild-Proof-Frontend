@@ -45,13 +45,41 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // naya SW purana hata de
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+
+        // SPA routes
         navigateFallback: "/index.html",
+        // API / external ko HTML fallback mat do
+        navigateFallbackDenylist: [/^\/api/, /\/assets\//],
+
+        // hashed assets precache (default bhi karta hai; clear rakhne ke liye)
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+
         runtimeCaching: [
+          // API — hamesha network (cache nahi)
           {
             urlPattern: ({ url }) =>
               url.pathname.startsWith("/api") ||
               url.hostname.includes("onrender.com"),
             handler: "NetworkOnly",
+          },
+          // JS/CSS chunks — pehle cache, phir network update
+          // (hash change pe naya file name = apne aap miss → network)
+          {
+            urlPattern: ({ request }) =>
+              request.destination === "script" ||
+              request.destination === "style",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "fieldproof-static-assets",
+              expiration: {
+                maxEntries: 64,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
           },
         ],
       },

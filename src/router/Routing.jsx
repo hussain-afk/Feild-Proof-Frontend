@@ -1,40 +1,67 @@
-import { lazy, Suspense, useContext } from "react";
+import { Suspense, useContext } from "react";
 import { Navigate, Route, Routes, Outlet } from "react-router-dom";
 import { context } from "../context/context.jsx";
 import useAuth from "../hooks/useAuth.jsx";
 import LoadingState from "../ui/LoadingState.jsx";
+import { lazyWithRetry } from "../utils/LazyWithRetry.jsx";
 
-const AuthPage = lazy(() => import("../ui/AuthPage.jsx"));
-const WorkerDashboard = lazy(() => import("../ui/worker/pages/HomePage.jsx"));
-const ManagerDashboard = lazy(() => import("../ui/manager/pages/HomePage.jsx"));
-const WorkerRootLayout = lazy(() => import("../ui/worker/WorkerRootLayout.jsx"));
-const ManagerRootLayout = lazy(() => import("../ui/manager/ManagerRootLayout.jsx"));
-const VerificationPage = lazy(() =>
+const AuthPage = lazyWithRetry(() => import("../ui/AuthPage.jsx"));
+const WorkerDashboard = lazyWithRetry(() =>
+  import("../ui/worker/pages/HomePage.jsx")
+);
+const ManagerDashboard = lazyWithRetry(() =>
+  import("../ui/manager/pages/HomePage.jsx")
+);
+const WorkerRootLayout = lazyWithRetry(() =>
+  import("../ui/worker/WorkerRootLayout.jsx")
+);
+const ManagerRootLayout = lazyWithRetry(() =>
+  import("../ui/manager/ManagerRootLayout.jsx")
+);
+const VerificationPage = lazyWithRetry(() =>
   import("../ui/manager/pages/VerificationPage.jsx")
 );
-const ReviewedTasks = lazy(() => import("../ui/ReviewedTasks.jsx"));
-const ProfilePage = lazy(() => import("../ui/ProfilePage.jsx"));
-const AdminRootLayout = lazy(() => import("../ui/admin/AdminRootLayout.jsx"));
-const AdminDashboard = lazy(() => import("../ui/admin/pages/HomePage.jsx"));
-const AdminUsersPage = lazy(() => import("../ui/admin/pages/AllUsersPage.jsx"));
-const LandingPage = lazy(() => import("../ui/LandingPage.jsx"));
-const PendingPage = lazy(() => import("../ui/pendingManager/Pending.jsx"));
-const AllRequests = lazy(() => import("../ui/admin/pages/AllRequests.jsx"));
-const BannedPage = lazy(() => import("../ui/banned/Banned.jsx"));
-const AddPlanPage = lazy(() => import("../ui/admin/pages/AddPlanPage.jsx"));
-const AllPlansPage = lazy(() => import("../ui/manager/pages/AllPlansPage.jsx"));
-const ManagerChatPage = lazy(() => import("../ui/manager/pages/ChatPage.jsx"));
-const WorkerChatPage = lazy(() => import("../ui/worker/pages/ChatPage.jsx"));
-const MaintenanceSettings = lazy(() =>
+const ReviewedTasks = lazyWithRetry(() => import("../ui/ReviewedTasks.jsx"));
+const ProfilePage = lazyWithRetry(() => import("../ui/ProfilePage.jsx"));
+const AdminRootLayout = lazyWithRetry(() =>
+  import("../ui/admin/AdminRootLayout.jsx")
+);
+const AdminDashboard = lazyWithRetry(() =>
+  import("../ui/admin/pages/HomePage.jsx")
+);
+const AdminUsersPage = lazyWithRetry(() =>
+  import("../ui/admin/pages/AllUsersPage.jsx")
+);
+const LandingPage = lazyWithRetry(() => import("../ui/LandingPage.jsx"));
+const PendingPage = lazyWithRetry(() =>
+  import("../ui/pendingManager/Pending.jsx")
+);
+const AllRequests = lazyWithRetry(() =>
+  import("../ui/admin/pages/AllRequests.jsx")
+);
+const BannedPage = lazyWithRetry(() => import("../ui/banned/Banned.jsx"));
+const AddPlanPage = lazyWithRetry(() =>
+  import("../ui/admin/pages/AddPlanPage.jsx")
+);
+const AllPlansPage = lazyWithRetry(() =>
+  import("../ui/manager/pages/AllPlansPage.jsx")
+);
+const ManagerChatPage = lazyWithRetry(() =>
+  import("../ui/manager/pages/ChatPage.jsx")
+);
+const WorkerChatPage = lazyWithRetry(() =>
+  import("../ui/worker/pages/ChatPage.jsx")
+);
+const MaintenanceSettings = lazyWithRetry(() =>
   import("../ui/admin/pages/MaintenanceSettingPage.jsx")
 );
-const AvalaibleWorkersPage = lazy(() =>
+const AvalaibleWorkersPage = lazyWithRetry(() =>
   import("../ui/manager/pages/AvalaibleWorkersPage.jsx")
 );
-const ManagerPendingInvitesPage = lazy(() =>
+const ManagerPendingInvitesPage = lazyWithRetry(() =>
   import("../ui/manager/pages/PendingInvitesPage.jsx")
 );
-const WorkerPendingInvitesPage = lazy(() =>
+const WorkerPendingInvitesPage = lazyWithRetry(() =>
   import("../ui/worker/pages/MyInvitesPage.jsx")
 );
 
@@ -42,11 +69,9 @@ const Page = ({ children }) => (
   <Suspense fallback={<LoadingState />}>{children}</Suspense>
 );
 
-// Worker abhi kisi team mein nahi
 const isFreeWorker = (user) =>
   user?.role === "worker" && !user?.managerId;
 
-// Login ke baad kahan bhejna hai
 const homePathFor = (user) => {
   if (!user) return "/auth";
   if (user.isBanned) return "/banned";
@@ -69,7 +94,6 @@ const RoleProtectedRoute = ({ children, role, user }) => {
   return children;
 };
 
-// Team wale pages — free worker ko invites pe bhejo
 const RequireWorkerTeam = ({ user }) => {
   if (isFreeWorker(user)) {
     return <Navigate to="/worker/my-invites" replace />;
@@ -150,7 +174,6 @@ const Routing = () => {
           </RoleProtectedRoute>
         }
       >
-        {/* Free worker bhi yeh dekh sakta hai */}
         <Route
           path="my-invites"
           element={
@@ -159,8 +182,6 @@ const Routing = () => {
             </Page>
           }
         />
-
-        {/* Optional: profile free worker ko bhi */}
         <Route
           path="me/:id"
           element={
@@ -178,7 +199,6 @@ const Routing = () => {
           }
         />
 
-        {/* Baaki pages — team zaroori */}
         <Route element={<RequireWorkerTeam user={user} />}>
           <Route
             index
@@ -216,23 +236,14 @@ const Routing = () => {
           path="available-workers"
           element={<Page><AvalaibleWorkersPage /></Page>}
         />
-        <Route
-          path="plans"
-          element={<Page><AllPlansPage /></Page>}
-        />
-        <Route
-          path="chat"
-          element={<Page><ManagerChatPage /></Page>}
-        />
+        <Route path="plans" element={<Page><AllPlansPage /></Page>} />
+        <Route path="chat" element={<Page><ManagerChatPage /></Page>} />
         <Route
           path="pending-invites"
           element={<Page><ManagerPendingInvitesPage /></Page>}
         />
         <Route path="reviewed" element={<Page><ReviewedTasks /></Page>} />
-        <Route
-          path="me/:id"
-          element={<Page><ProfilePage /></Page>}
-        />
+        <Route path="me/:id" element={<Page><ProfilePage /></Page>} />
       </Route>
 
       {/* -------- ADMIN -------- */}
@@ -248,7 +259,10 @@ const Routing = () => {
       >
         <Route index element={<Page><AdminDashboard /></Page>} />
         <Route path="users" element={<Page><AdminUsersPage /></Page>} />
-        <Route path="maintenance" element={<Page><MaintenanceSettings /></Page>} />
+        <Route
+          path="maintenance"
+          element={<Page><MaintenanceSettings /></Page>}
+        />
         <Route path="requests" element={<Page><AllRequests /></Page>} />
         <Route path="add-plan" element={<Page><AddPlanPage /></Page>} />
         <Route path="me/:id" element={<Page><ProfilePage /></Page>} />
