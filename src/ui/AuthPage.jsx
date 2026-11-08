@@ -1,8 +1,9 @@
-import { useState } from "react";
+
+import { useState, useContext } from "react";
 import useAuth from "../hooks/useAuth";
-import { useContext } from "react";
 import { context } from "../context/context.jsx";
 import feildproofLogo from "../assets/fieldproof-logo.png";
+
 import {
   Mail,
   Lock,
@@ -20,12 +21,15 @@ import {
   UserCog,
   ArrowRight,
   Info,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
+
 import LoadingState from "../ui/LoadingState.jsx";
 
-/* ------------------------------------------------------------------ */
-/* Settings                                                             */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------- */
+/* Settings                                           */
+/* -------------------------------------------------- */
 
 const MANAGER_REQUEST_ROLE = "pending_manager";
 
@@ -57,11 +61,12 @@ const MODES = {
     tab: "Sign in",
     icon: LogIn,
     title: "Welcome back",
-    text: "Sign in to open your dashboard.",
-    button: "Sign in",
+    text: "Sign in to continue to your workspace.",
+    button: "Sign in to account",
     fields: ["email", "password"],
     successText: "",
   },
+
   signup: {
     tab: "Register",
     icon: UserPlus,
@@ -71,6 +76,7 @@ const MODES = {
     fields: ["name", "email", "password"],
     successText: "Registration successful. You can sign in now.",
   },
+
   managerRequest: {
     tab: "Manager request",
     icon: UserCog,
@@ -102,58 +108,64 @@ const FEATURES = [
   },
 ];
 
-const EMPTY_FORM = { name: "", email: "", password: "" };
+const EMPTY_FORM = {
+  name: "",
+  email: "",
+  password: "",
+};
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-slate-800/80 bg-[#0a0f1a] pl-11 pr-4 text-sm text-slate-200 outline-none placeholder:text-slate-600 transition-all duration-200 hover:border-slate-700 focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/15";
+  "h-12 w-full rounded-xl border border-slate-800 bg-[#090f1b] pl-11 pr-11 text-sm text-slate-100 outline-none placeholder:text-slate-600 transition-all duration-200 hover:border-slate-700 focus:border-sky-500/70 focus:ring-4 focus:ring-sky-500/10";
 
-/* ------------------------------------------------------------------ */
-/* Small components                                                     */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------- */
+/* Logo                                               */
+/* -------------------------------------------------- */
 
-function Logo() {
+function Logo({ compact = false }) {
   return (
     <div className="flex items-center gap-3">
-      {/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/25">
-        <ShieldCheck className="h-5 w-5" />
-      </div>
-      <div className="leading-tight">
-        <p className="text-lg font-semibold tracking-tight text-white">
-          Field<span className="text-sky-400">Proof</span>
-        </p>
-        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-          Workforce platform
-        </p>
-      </div> */}
-      <img src={feildproofLogo} alt="FieldProof Logo" className="h-20 w-auto" />
+      <img
+        src={feildproofLogo}
+        alt="FieldProof Logo"
+        className={compact ? "h-14 w-auto object-contain" : "h-16 w-auto object-contain"}
+      />
     </div>
   );
 }
 
-function Field({ id, label, icon: Icon, type = "text", hint, ...inputProps }) {
+/* -------------------------------------------------- */
+/* Input Field                                        */
+/* -------------------------------------------------- */
+
+function Field({
+  id,
+  label,
+  icon: Icon,
+  type = "text",
+  hint,
+  ...inputProps
+}) {
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
 
   return (
-    <div>
+    <div className="space-y-2">
       <label
         htmlFor={id}
-        className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-slate-500"
+        className="block text-xs font-semibold tracking-wide text-slate-400"
       >
         {label}
-        <span aria-hidden="true" className="ml-0.5 text-rose-400">
-          *
-        </span>
+        <span className="ml-1 text-rose-400">*</span>
       </label>
 
       <div className="relative">
-        <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <Icon className="pointer-events-none absolute left-4 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-slate-500 transition-colors" />
 
         <input
           id={id}
           required
           type={isPassword && visible ? "text" : type}
-          className={`${inputClass} ${isPassword ? "pr-12" : ""}`}
+          className={inputClass}
           {...inputProps}
         />
 
@@ -162,23 +174,29 @@ function Field({ id, label, icon: Icon, type = "text", hint, ...inputProps }) {
             type="button"
             onClick={() => setVisible((v) => !v)}
             aria-label={visible ? "Hide password" : "Show password"}
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800/60 hover:text-slate-200"
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
           >
             {visible ? (
-              <EyeOff className="h-4 w-4" />
+              <EyeOff size={17} />
             ) : (
-              <Eye className="h-4 w-4" />
+              <Eye size={17} />
             )}
           </button>
         )}
       </div>
 
       {hint && (
-        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{hint}</p>
+        <p className="text-xs leading-relaxed text-slate-500">
+          {hint}
+        </p>
       )}
     </div>
   );
 }
+
+/* -------------------------------------------------- */
+/* Notice                                             */
+/* -------------------------------------------------- */
 
 function Notice({ notice }) {
   if (!notice) return null;
@@ -189,21 +207,103 @@ function Notice({ notice }) {
   return (
     <div
       role={success ? "status" : "alert"}
-      className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm ${
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
         success
-          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
-          : "border-rose-500/25 bg-rose-500/10 text-rose-200"
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+          : "border-rose-500/20 bg-rose-500/10 text-rose-200"
       }`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-      <p className="leading-relaxed">{notice.text}</p>
+
+      <p className="leading-relaxed">
+        {notice.text}
+      </p>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Page                                                                 */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------- */
+/* Feature Panel                                       */
+/* -------------------------------------------------- */
+
+function FeaturePanel() {
+  return (
+    <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-slate-800/80 bg-gradient-to-br from-sky-950/40 via-[#0c1220] to-[#080d17] p-9 lg:flex">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.045]"
+        style={{
+          backgroundImage:
+            "linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)",
+          backgroundSize: "38px 38px",
+          maskImage:
+            "radial-gradient(ellipse at top left, black 10%, transparent 75%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at top left, black 10%, transparent 75%)",
+        }}
+      />
+
+      <div className="relative">
+        <Logo />
+
+        <div className="mt-10 inline-flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-semibold text-sky-300">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          WORKFORCE MANAGEMENT PLATFORM
+        </div>
+
+        <h1 className="mt-6 text-3xl font-bold leading-[1.25] tracking-tight text-white xl:text-4xl">
+          Work smarter.
+          <span className="block text-sky-400">
+            Verify everything.
+          </span>
+        </h1>
+
+        <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">
+          Manage field teams, track attendance and keep every
+          work operation transparent with FieldProof.
+        </p>
+
+        <div className="mt-9 space-y-3">
+          {FEATURES.map(({ icon: Icon, title, text }) => (
+            <div
+              key={title}
+              className="group flex items-center gap-4 rounded-2xl border border-slate-800/80 bg-[#0a101c]/70 p-4 transition duration-300 hover:border-sky-500/30 hover:bg-sky-500/[0.04]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400 transition group-hover:scale-105">
+                <Icon size={19} />
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-slate-100">
+                  {title}
+                </p>
+
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  {text}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mt-8 flex items-center justify-between border-t border-slate-800/80 pt-5">
+        <p className="text-[11px] text-slate-600">
+          © {new Date().getFullYear()} FieldProof
+        </p>
+
+        <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <ShieldCheck size={13} className="text-emerald-400" />
+          Secure workspace
+        </span>
+      </div>
+    </aside>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Auth Page                                          */
+/* -------------------------------------------------- */
 
 function AuthPage() {
   const { isLoading } = useContext(context);
@@ -216,14 +316,22 @@ function AuthPage() {
 
   const mode = MODES[authMode];
 
+  const isLogin = authMode === "login";
+
   const handleChange = (key) => (event) => {
-    setForm((prev) => ({ ...prev, [key]: event.target.value }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: event.target.value,
+    }));
   };
 
   const switchMode = (key) => {
     setAuthMode(key);
     setNotice(null);
-    setForm((prev) => ({ ...prev, password: "" }));
+    setForm((prev) => ({
+      ...prev,
+      password: "",
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -236,9 +344,15 @@ function AuthPage() {
       password: form.password,
     };
 
-    const hasEmptyField = mode.fields.some((key) => !values[key]);
+    const hasEmptyField = mode.fields.some(
+      (key) => !values[key]
+    );
+
     if (hasEmptyField) {
-      setNotice({ type: "error", text: "Please fill in all the fields." });
+      setNotice({
+        type: "error",
+        text: "Please fill in all the fields.",
+      });
       return;
     }
 
@@ -250,8 +364,11 @@ function AuthPage() {
       }
 
       if (authMode === "signup") {
-        // No managerId — worker joins a team later via manager invite
-        await register(values.name, values.email, values.password);
+        await register(
+          values.name,
+          values.email,
+          values.password
+        );
       }
 
       if (authMode === "managerRequest") {
@@ -264,7 +381,11 @@ function AuthPage() {
       }
 
       if (mode.successText) {
-        setNotice({ type: "success", text: mode.successText });
+        setNotice({
+          type: "success",
+          text: mode.successText,
+        });
+
         setForm(EMPTY_FORM);
       }
     } catch (error) {
@@ -285,88 +406,74 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#070a12] px-4 py-8 text-slate-100">
+    <div className="relative flex min-h-screen w-full items-center justify-center overflow-x-hidden bg-[#070a12] px-4 py-6 text-slate-100 sm:px-6">
+
+      {/* Background effects */}
+
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 overflow-hidden"
       >
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-sky-600/8 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/8 blur-3xl" />
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-sky-600/[0.08] blur-[110px]" />
+
+        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/[0.08] blur-[110px]" />
+
+        <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-900/[0.04] blur-[120px]" />
       </div>
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0c1220] shadow-2xl shadow-black/40 lg:grid-cols-[1fr_1.1fr]">
-        <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-slate-800/80 bg-gradient-to-br from-sky-950/40 via-[#0c1220] to-[#070a12] p-10 lg:flex">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.05]"
-            style={{
-              backgroundImage:
-                "linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)",
-              backgroundSize: "40px 40px",
-              maskImage:
-                "radial-gradient(ellipse at top left, black 15%, transparent 65%)",
-              WebkitMaskImage:
-                "radial-gradient(ellipse at top left, black 15%, transparent 65%)",
-            }}
-          />
+      {/* Main card */}
 
-          <div className="relative">
-            <Logo />
+      <div
+        className={`relative grid w-full overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0c1220] shadow-2xl shadow-black/50 ${
+          isLogin
+            ? "max-w-md"
+            : "max-w-5xl lg:grid-cols-[0.95fr_1.05fr]"
+        }`}
+      >
 
-            <span className="mt-10 inline-flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
-              Live attendance verification
-            </span>
+        {/* Login gets compact layout.
+            Signup and manager request retain feature panel. */}
 
-            <h1 className="mt-6 text-3xl font-semibold leading-tight tracking-tight text-white">
-              Work verification and
-              <span className="mt-1 block text-slate-400">
-                automated invoicing
-              </span>
-            </h1>
+        {!isLogin && <FeaturePanel />}
 
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-500">
-              Real-time attendance, GPS geo-fenced logs and automated invoicing
-              for your field teams.
-            </p>
+        {/* Form section */}
 
-            <ul className="mt-10 space-y-3">
-              {FEATURES.map(({ icon: Icon, title, text }) => (
-                <li
-                  key={title}
-                  className="flex items-start gap-3.5 rounded-2xl border border-slate-800/60 bg-[#0a0f1a]/60 p-4 transition hover:border-sky-500/25"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
-                    <Icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-slate-100">
-                      {title}
-                    </p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-slate-500">
-                      {text}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <p className="relative mt-10 text-xs text-slate-600">
-            &copy; {new Date().getFullYear()} FieldProof. All rights reserved.
-          </p>
-        </aside>
-
-        <main className="p-6 sm:p-10">
+        <main
+          className={`flex min-w-0 flex-col justify-center ${
+            isLogin
+              ? "p-5 sm:p-8"
+              : "p-5 sm:p-9 lg:p-10"
+          }`}
+        >
           <div className="mx-auto w-full max-w-md">
-            <div className="mb-8 lg:hidden">
-              <Logo />
-            </div>
+
+            {/* Compact login logo */}
+
+            {isLogin && (
+              <div className="mb-5 flex flex-col items-center text-center">
+                <Logo compact />
+
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-400">
+                  <Sparkles size={12} />
+                  Workforce platform
+                </div>
+              </div>
+            )}
+
+            {/* Mobile logo for signup / manager request */}
+
+            {!isLogin && (
+              <div className="mb-6 lg:hidden">
+                <Logo />
+              </div>
+            )}
+
+            {/* Tabs */}
 
             <div
               role="tablist"
               aria-label="Account options"
-              className="mb-8 grid grid-cols-3 gap-1 rounded-xl border border-slate-800/80 bg-[#0a0f1a] p-1"
+              className="mb-6 grid grid-cols-3 gap-1 rounded-xl border border-slate-800 bg-[#080e19] p-1"
             >
               {Object.entries(MODES).map(([key, item]) => {
                 const TabIcon = item.icon;
@@ -381,27 +488,32 @@ function AuthPage() {
                     aria-selected={active}
                     aria-controls="auth-form"
                     onClick={() => switchMode(key)}
-                    className={`flex flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2.5 text-center text-[11px] font-medium leading-tight transition sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${
+                    className={`flex min-h-10 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-[10px] font-semibold leading-tight transition sm:flex-row sm:gap-2 sm:px-2 sm:text-xs ${
                       active
-                        ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
-                        : "text-slate-500 hover:text-slate-300"
+                        ? "bg-sky-600 text-white shadow-lg shadow-sky-600/20"
+                        : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-200"
                     }`}
                   >
-                    <TabIcon className="h-4 w-4 shrink-0" />
+                    <TabIcon size={15} className="shrink-0" />
                     {item.tab}
                   </button>
                 );
               })}
             </div>
 
-            <div className="mb-7 space-y-1.5">
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
+            {/* Heading */}
+
+            <div className="mb-5 space-y-1.5">
+              <h2 className="text-2xl font-bold tracking-tight text-white">
                 {mode.title}
               </h2>
-              <p className="text-sm leading-relaxed text-slate-500">
+
+              <p className="text-xs leading-relaxed text-slate-500 sm:text-sm">
                 {mode.text}
               </p>
             </div>
+
+            {/* Form */}
 
             <form
               id="auth-form"
@@ -427,66 +539,82 @@ function AuthPage() {
                 />
               ))}
 
+              {/* Manager info */}
+
               {mode.info && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3 text-sm text-sky-200">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p className="leading-relaxed">{mode.info}</p>
+                <div className="flex items-start gap-2.5 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3 text-xs leading-relaxed text-sky-200">
+                  <Info size={16} className="mt-0.5 shrink-0" />
+                  <p>{mode.info}</p>
                 </div>
               )}
+
+              {/* Notice */}
 
               <div aria-live="polite">
                 <Notice notice={notice} />
               </div>
 
+              {/* Submit */}
+
               <button
                 type="submit"
                 disabled={loading}
-                className="group mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 text-sm font-medium text-white shadow-lg shadow-sky-600/20 transition hover:bg-sky-500 hover:shadow-sky-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1220] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                className="group mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-sky-600/20 transition duration-300 hover:-translate-y-0.5 hover:from-sky-500 hover:to-blue-500 hover:shadow-sky-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1220] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 size={17} className="animate-spin" />
                     Please wait...
                   </>
                 ) : (
                   <>
                     {mode.button}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight
+                      size={17}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
                   </>
                 )}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-500">
-              {authMode === "login" ? (
-                <>
-                  New to FieldProof?{" "}
-                  <button
-                    type="button"
-                    onClick={() => switchMode("signup")}
-                    className="font-medium text-sky-400 transition hover:text-sky-300"
-                  >
-                    Create an account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => switchMode("login")}
-                    className="font-medium text-sky-400 transition hover:text-sky-300"
-                  >
-                    Sign in
-                  </button>
-                </>
-              )}
-            </p>
+            {/* Switch account */}
 
-            <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-600">
-              <Lock className="h-3 w-3" />
+            <div className="mt-5 border-t border-slate-800/70 pt-5">
+              <p className="text-center text-xs text-slate-500 sm:text-sm">
+                {authMode === "login" ? (
+                  <>
+                    New to FieldProof?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("signup")}
+                      className="font-semibold text-sky-400 transition hover:text-sky-300"
+                    >
+                      Create an account
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("login")}
+                      className="font-semibold text-sky-400 transition hover:text-sky-300"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                )}
+              </p>
+            </div>
+
+            {/* Security footer */}
+
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-slate-600">
+              <Lock size={11} />
               Secure access to your FieldProof workspace
-            </p>
+            </div>
+
           </div>
         </main>
       </div>
