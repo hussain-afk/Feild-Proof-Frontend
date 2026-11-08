@@ -87,13 +87,16 @@ const useChat = (otherUserId) => {
     };
   }, [otherId]);
 
-  const handleSendMessage = async (text) => {
+  const handleSendMessage = async (text, file = null) => {
     const clean = String(text || "").trim();
-    if (!clean || !otherId) return;
+
+    // Text ya file, dono mein se kam az kam ek zaroori hai
+    if ((!clean && !file) || !otherId) return;
 
     setSending(true);
     try {
-      const msg = await sendMessage(otherId, clean);
+      const msg = await sendMessage(otherId, clean, file);
+
       setMessages((prev) => {
         if (prev.some((m) => getId(m._id) === getId(msg._id))) return prev;
         return [...prev, msg];
@@ -103,6 +106,7 @@ const useChat = (otherUserId) => {
       toast.error(
         error?.response?.data?.message || error?.message || "Failed to send"
       );
+      return null; // ChatPanel ko pata chale ke send fail hua
     } finally {
       setSending(false);
     }
