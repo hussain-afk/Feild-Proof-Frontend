@@ -30,6 +30,7 @@ import {
   XCircle,
 } from "lucide-react";
 import PlanBanner from "../../PlanBanner.jsx";
+import NotificationDropdown from "../../NotificationDropdown.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Constants and helpers                                                */
@@ -309,25 +310,35 @@ function Home() {
       <div className="min-h-full text-slate-100">
         <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           {/* ================= HEADER ================= */}
-          <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-sm text-slate-500">{today}</p>
+          <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            {/* Header Content */}
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">{today}</p>
+
               <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                 Field operations
               </h1>
-              <p className="mt-1.5 text-sm text-slate-400">
+
+              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-400">
                 Create tasks, assign workers and track work at each site.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsCreateTaskModalOpen(true)}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f17] md:w-auto"
-            >
-              <Plus className="h-4 w-4" />
-              Create task
-            </button>
+            {/* Header Actions */}
+            <div className="flex w-full items-center gap-3 sm:w-auto sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCreateTaskModalOpen(true)}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-lg shadow-sky-950/20 transition-all duration-200 hover:bg-sky-500 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f17] sm:flex-none"
+              >
+                <Plus className="h-4 w-4" />
+                Create task
+              </button>
+
+              <div className="shrink-0">
+                <NotificationDropdown />
+              </div>
+            </div>
           </header>
           <PlanBanner />
           {/* ================= STATS ================= */}

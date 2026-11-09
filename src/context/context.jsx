@@ -1,7 +1,6 @@
 import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-
 import { MailWarning } from "lucide-react";
 
 import {
@@ -17,51 +16,44 @@ import {
   getMyApprovedTasks,
   getMyRejectedTasks,
 } from "../api/verification.api.js";
-import { getAdminInfos, getManagerRequests, getAllPlans } from "../api/admin.api.js";
+import {
+  getAdminInfos,
+  getManagerRequests,
+  getAllPlans,
+} from "../api/admin.api.js";
 import {
   getWorkerInvitations,
   getManagerInvitations,
 } from "../api/invitation.api.js";
 import { getMySubscription } from "../api/billing.api.js";
 import { socket } from "../services/socket.js";
-
 import Modal from "../ui/Modal.jsx";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const context = createContext();
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                              */
-/* ------------------------------------------------------------------ */
-
 const getId = (item) => item?._id || item?.id;
 
-const getPendingManagerRequests = (requests) =>
-  (Array.isArray(requests) ? requests : []).filter(
-    (request) =>
-      String(request?.status || "pending").toLowerCase() === "pending"
+const pendingOnly = (list) =>
+  (Array.isArray(list) ? list : []).filter(
+    (r) => String(r?.status || "pending").toLowerCase() === "pending"
   );
 
 const addIfNew = (list, item) =>
   list.some((x) => getId(x) === getId(item)) ? list : [item, ...list];
 
-const isSameUser = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const sameUser = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const HOME = { manager: "/manager", admin: "/admin", worker: "/worker" };
+const REFRESH_GAP = 30 * 1000;
+const POLL_MS = 60 * 1000;
 
-const MIN_REFRESH_GAP = 30 * 1000;
-const FALLBACK_POLL = 60 * 1000;
-
-/* ------------------------------------------------------------------ */
-/* Provider                                                             */
-/* ------------------------------------------------------------------ */
+// API result se value nikaalo
+const ok = (result) => (result.status === "fulfilled" ? result.value : null);
 
 const ContextProvider = ({ children }) => {
   const navigate = useNavigate();
 
-  // =========================
-  // STATES
-  // =========================
   const [user, setUser] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -79,12 +71,6 @@ const ContextProvider = ({ children }) => {
   const [mySubscription, setMySubscription] = useState(null);
   const [allPlans, setAllPlans] = useState([]);
 
-  // console.log("allPlans", allPlans);
-  // console.log("mySubscription", mySubscription);
-  // console.log(availableWorkers," availableWorkers");
-  // console.log(managerInvitations," managerInvitations");
-  // console.log(myInvitations," myInvitations");
-
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -94,56 +80,42 @@ const ContextProvider = ({ children }) => {
   const userId = user?._id || user?.id;
   const role = user?.role;
 
-  const isFetchingRef = useRef(false);
-  const lastFetchRef = useRef(0);
-  const verifyModalShownRef = useRef(false);
+  const busy = useRef(false);
+  const lastFetch = useRef(0);
+  const verifyShown = useRef(false);
   const roleRef = useRef(null);
-  const prevUserIdRef = useRef(null);
-  const navigateRef = useRef(navigate);
+  const prevUserId = useRef(null);
+  const navRef = useRef(navigate);
+  const refreshRef = useRef(null);
+  const syncRef = useRef(null);
 
   useEffect(() => {
-    navigateRef.current = navigate;
+    navRef.current = navigate;
   }, [navigate]);
 
   useEffect(() => {
     roleRef.current = role || null;
   }, [role]);
 
-  // =========================
-  // APPROVED + REJECTED TASKS
-  // =========================
+  // ----- reviewed tasks -----
   const fetchReviewedTasks = useCallback(async () => {
-    const [approved, rejected] = await Promise.allSettled([
+    const [a, r] = await Promise.allSettled([
       getMyApprovedTasks(),
       getMyRejectedTasks(),
     ]);
-
-    if (approved.status === "fulfilled") {
-      setMyApprovedTasks(approved.value || []);
-    } else {
-      console.error("Could not load approved tasks:", approved.reason);
-    }
-
-    if (rejected.status === "fulfilled") {
-      setMyRejectedTasks(rejected.value || []);
-    } else {
-      console.error("Could not load rejected tasks:", rejected.reason);
-    }
+    if (a.status === "fulfilled") setMyApprovedTasks(a.value || []);
+    if (r.status === "fulfilled") setMyRejectedTasks(r.value || []);
   }, []);
 
-  // =========================
-  // ROLE DATA
-  // =========================
+  // ----- role data -----
   const fetchRoleData = useCallback(
     async (userRole, options = {}) => {
-      const { showLoader = false } = options;
       if (!userRole) return;
-
-      if (showLoader) setIsLoading(true);
+      if (options.showLoader) setIsLoading(true);
 
       try {
         if (userRole === "manager") {
-          const results = await Promise.allSettled([
+          const res = await Promise.allSettled([
             getAllTasks(),
             getVerificationStatusAPI(),
             getMyWorkers(),
@@ -151,75 +123,53 @@ const ContextProvider = ({ children }) => {
             getManagerInvitations(),
             getMySubscription(),
             getAllPlans(),
+            getNotifications(),
           ]);
-
-          const value = (i) =>
-            results[i].status === "fulfilled" ? results[i].value : null;
-
-          results.forEach((r, i) => {
-            if (r.status === "rejected") {
-              console.error("Manager fetch failed at", i, r.reason);
-            }
-          });
-
-          setAllTasks(value(0) || []);
-          setVerificationStatus(value(1) || []);
-          setMyWorkers(value(2) || []);
-          setAvailableWorkers(value(3) || []);
-          setManagerInvitations(value(4) || []);
-
-          // subscription: object ya null — array mat banao
-          // agar API { subscription: {...} } bhejti ho to:
-          // const raw = value(5);
-          // setMySubscription(raw?.subscription ?? raw ?? null);
-          setMySubscription(value(5) ?? null);
-
-          setAllPlans(value(6) || []);
+          setAllTasks(ok(res[0]) || []);
+          setVerificationStatus(ok(res[1]) || []);
+          setMyWorkers(ok(res[2]) || []);
+          setAvailableWorkers(ok(res[3]) || []);
+          setManagerInvitations(ok(res[4]) || []);
+          setMySubscription(ok(res[5]) ?? null);
+          setAllPlans(ok(res[6]) || []);
+          setNotifications(ok(res[7]) || []);
           await fetchReviewedTasks();
         }
 
         if (userRole === "worker") {
-          const results = await Promise.allSettled([
+          const res = await Promise.allSettled([
             getMyTasks(),
             getNotifications(),
             getWorkerInvitations(),
           ]);
-          const value = (i) =>
-            results[i].status === "fulfilled" ? results[i].value : null;
-
-          setMyTasks(value(0) || []);
-          setNotifications(value(1) || []);
-          setMyInvitations(value(2) || []);
+          setMyTasks(ok(res[0]) || []);
+          setNotifications(ok(res[1]) || []);
+          setMyInvitations(ok(res[2]) || []);
           await fetchReviewedTasks();
         }
 
         if (userRole === "admin") {
-          const results = await Promise.allSettled([
+          const res = await Promise.allSettled([
             getAdminInfos(),
             getAllUsers(),
             getManagerRequests(),
           ]);
-          const value = (i) =>
-            results[i].status === "fulfilled" ? results[i].value : null;
-
-          setAdminInfos(value(0) || []);
-          setAllUsers(value(1) || []);
-          setManagerRequests(getPendingManagerRequests(value(2)));
+          setAdminInfos(ok(res[0]) || []);
+          setAllUsers(ok(res[1]) || []);
+          setManagerRequests(pendingOnly(ok(res[2])));
         }
 
-        lastFetchRef.current = Date.now();
-      } catch (error) {
-        console.error("fetchRoleData error:", error);
+        lastFetch.current = Date.now();
+      } catch (err) {
+        console.error("fetchRoleData:", err);
       } finally {
-        if (showLoader) setIsLoading(false);
+        if (options.showLoader) setIsLoading(false);
       }
     },
     [fetchReviewedTasks]
   );
 
-  // =========================
-  // SYNC USER
-  // =========================
+  // ----- sync user -----
   const syncUser = useCallback(
     async (partial) => {
       try {
@@ -228,7 +178,7 @@ const ContextProvider = ({ children }) => {
 
         setUser((prev) => {
           const next = partial ? { ...prev, ...partial } : fresh;
-          return isSameUser(prev, next) ? prev : next;
+          return sameUser(prev, next) ? prev : next;
         });
 
         const newRole = (partial || fresh)?.role;
@@ -236,92 +186,93 @@ const ContextProvider = ({ children }) => {
           roleRef.current = newRole;
           await fetchRoleData(newRole);
         }
-      } catch (error) {
-        console.error("User sync error:", error);
+      } catch (err) {
+        console.error("syncUser:", err);
       }
     },
     [fetchRoleData]
   );
 
+  // ----- refresh (30s gap + ek waqt ek) -----
   const refresh = useCallback(async () => {
-    if (!role || isFetchingRef.current) return;
-    isFetchingRef.current = true;
+    if (!roleRef.current || busy.current) return;
+    if (Date.now() - lastFetch.current < REFRESH_GAP) return;
+
+    busy.current = true;
     setIsRefreshing(true);
     try {
-      await Promise.all([fetchRoleData(role), syncUser()]);
-    } catch (error) {
-      console.error("Refresh error:", error);
+      await Promise.all([fetchRoleData(roleRef.current), syncUser()]);
+    } catch (err) {
+      console.error("refresh:", err);
     } finally {
-      isFetchingRef.current = false;
+      busy.current = false;
       setIsRefreshing(false);
     }
-  }, [role, fetchRoleData, syncUser]);
+  }, [fetchRoleData, syncUser]);
+
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
+
+  useEffect(() => {
+    syncRef.current = syncUser;
+  }, [syncUser]);
 
   const addTask = useCallback((task) => {
     if (task && getId(task)) setAllTasks((old) => addIfNew(old, task));
   }, []);
 
   const removeTask = useCallback((taskId) => {
-    const remove = (old) => old.filter((t) => getId(t) !== taskId);
-    setAllTasks(remove);
-    setMyTasks(remove);
+    const drop = (old) => old.filter((t) => getId(t) !== taskId);
+    setAllTasks(drop);
+    setMyTasks(drop);
   }, []);
 
-  // =========================
-  // INITIAL LOAD
-  // =========================
+  // ----- first load -----
   useEffect(() => {
-    let cancelled = false;
+    let stop = false;
 
-    const loadData = async () => {
+    (async () => {
       try {
         setIsLoading(true);
+        const current = await getCurrentUser();
+        if (stop) return;
 
-        const currentUser = await getCurrentUser();
-        if (cancelled) return;
+        setUser(current);
+        if (!current) return;
 
-        setUser(currentUser);
-
-        if (!currentUser) return;
-
-        if (currentUser.isBanned) {
+        if (current.isBanned) {
           toast.error("Your account has been banned. Please contact support.");
-          navigateRef.current("/banned");
+          navRef.current("/banned");
           return;
         }
 
-        await fetchRoleData(currentUser.role);
-        if (cancelled) return;
+        await fetchRoleData(current.role);
+        if (stop) return;
 
-        if (
-          currentUser.isVerified === false &&
-          !verifyModalShownRef.current
-        ) {
-          verifyModalShownRef.current = true;
+        if (current.isVerified === false && !verifyShown.current) {
+          verifyShown.current = true;
           setIsVerifyModalOpen(true);
         }
 
-        if (window.location.pathname === "/auth" && HOME[currentUser.role]) {
-          navigateRef.current(HOME[currentUser.role]);
+        if (window.location.pathname === "/auth" && HOME[current.role]) {
+          navRef.current(HOME[current.role]);
         }
-      } catch (error) {
-        console.error("Data loading error:", error);
+      } catch (err) {
+        console.error("loadData:", err);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!stop) setIsLoading(false);
       }
-    };
+    })();
 
-    loadData();
     return () => {
-      cancelled = true;
+      stop = true;
     };
   }, [fetchRoleData]);
 
-  // =========================
-  // LOGOUT CLEANUP
-  // =========================
+  // ----- logout clear -----
   useEffect(() => {
-    if (prevUserIdRef.current && !userId) {
+    if (prevUserId.current && !userId) {
       setAllUsers([]);
       setAllTasks([]);
       setMyTasks([]);
@@ -338,123 +289,120 @@ const ContextProvider = ({ children }) => {
       setMySubscription(null);
       setAllPlans([]);
     }
-    prevUserIdRef.current = userId || null;
+    prevUserId.current = userId || null;
   }, [userId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user?.isVerified) setIsVerifyModalOpen(false);
   }, [user?.isVerified]);
 
-  // =========================
-  // TAB FOCUS / FALLBACK
-  // =========================
+  // ----- tab focus -----
   useEffect(() => {
     if (!userId) return;
 
-    const syncIfStale = () => {
-      if (document.visibilityState !== "visible") return;
-      if (Date.now() - lastFetchRef.current < MIN_REFRESH_GAP) return;
-      refresh();
+    const onFocus = () => {
+      if (document.visibilityState === "visible") refreshRef.current?.();
     };
 
-    document.addEventListener("visibilitychange", syncIfStale);
-    window.addEventListener("focus", syncIfStale);
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
 
-    const fallback = setInterval(() => {
+    const timer = setInterval(() => {
       if (!socket.connected && document.visibilityState === "visible") {
-        refresh();
+        refreshRef.current?.();
       }
-    }, FALLBACK_POLL);
+    }, POLL_MS);
 
     return () => {
-      document.removeEventListener("visibilitychange", syncIfStale);
-      window.removeEventListener("focus", syncIfStale);
-      clearInterval(fallback);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+      clearInterval(timer);
     };
-  }, [userId, refresh]);
+  }, [userId]);
 
-  // =========================
-  // SOCKET.IO
-  // =========================
+  // ----- socket connect -----
   useEffect(() => {
     if (!userId) return;
 
-    const handleConnect = () => {
+    const onConnect = () => {
       socket.emit("join_room", userId);
-      if (Date.now() - lastFetchRef.current > 5000) refresh();
+      if (Date.now() - lastFetch.current > REFRESH_GAP) {
+        refreshRef.current?.();
+      }
     };
 
-    const handleNewTask = (data = {}) => {
-      const newTask = data.task || data.data;
+    socket.on("connect", onConnect);
+    socket.connect();
+    if (socket.connected) onConnect();
 
-      if (newTask) {
-        setAllTasks((old) => addIfNew(old, newTask));
-        setMyTasks((old) => addIfNew(old, newTask));
-      }
-
-      if (data.notification) {
-        setNotifications((old) => addIfNew(old, data.notification));
-      }
-
-      toast.success(data.message || "New task assigned!");
+    return () => {
+      socket.off("connect", onConnect);
+      socket.disconnect();
     };
+  }, [userId]);
+
+  // ----- socket events -----
+  useEffect(() => {
+    if (!userId) return;
 
     let softTimer;
     const softRefresh = () => {
       clearTimeout(softTimer);
-      softTimer = setTimeout(refresh, 400);
+      softTimer = setTimeout(() => refreshRef.current?.(), 400);
     };
 
-    const handleTaskCreated = (data = {}) => {
-      const newTask = data.task || data.data;
-      if (newTask && getId(newTask)) {
-        setAllTasks((old) => addIfNew(old, newTask));
-      } else {
-        softRefresh();
+    const onNewTask = (data = {}) => {
+      const task = data.task || data.data;
+      if (task) {
+        setAllTasks((old) => addIfNew(old, task));
+        setMyTasks((old) => addIfNew(old, task));
       }
+      if (data.notification) {
+        setNotifications((old) => addIfNew(old, data.notification));
+      }
+      toast.success(data.message || "New task assigned!");
     };
 
-    const handleTaskUpdate = (data = {}) => {
+    const onTaskCreated = (data = {}) => {
+      const task = data.task || data.data;
+      if (task && getId(task)) setAllTasks((old) => addIfNew(old, task));
+      else softRefresh();
+    };
+
+    const onTaskUpdate = (data = {}) => {
       const updated = data.task || data.data || data;
-      const taskId = getId(updated);
-      if (!taskId) return softRefresh();
-
+      const id = getId(updated);
+      if (!id) return softRefresh();
       const merge = (old) =>
-        old.map((task) =>
-          getId(task) === taskId ? { ...task, ...updated } : task
-        );
-
+        old.map((t) => (getId(t) === id ? { ...t, ...updated } : t));
       setAllTasks(merge);
       setMyTasks(merge);
     };
 
-    const handleTaskDelete = (data = {}) => {
-      const taskId = data.taskId || data.id || getId(data.task);
-      if (!taskId) return softRefresh();
-
-      const remove = (old) => old.filter((task) => getId(task) !== taskId);
-      setAllTasks(remove);
-      setMyTasks(remove);
+    const onTaskDelete = (data = {}) => {
+      const id = data.taskId || data.id || getId(data.task);
+      if (!id) return softRefresh();
+      const drop = (old) => old.filter((t) => getId(t) !== id);
+      setAllTasks(drop);
+      setMyTasks(drop);
     };
 
-    const handleNotification = (data = {}) => {
-      const notification = data.notification || data;
-      if (getId(notification)) {
-        setNotifications((old) => addIfNew(old, notification));
-      }
+    const onNotification = (data = {}) => {
+      const n = data.notification || data;
+      if (getId(n)) setNotifications((old) => addIfNew(old, n));
     };
 
-    const handleUserUpdated = (data = {}) => {
+    const onUserUpdated = (data = {}) => {
       if (data.user?.isBanned) {
         setUser(data.user);
-        navigateRef.current("/banned");
+        navRef.current("/banned");
         return;
       }
-      syncUser(data.user);
+      syncRef.current?.(data.user);
     };
 
-    const debounce = (fn) => {
+    // chhota debounce helper
+    const debounced = (fn) => {
       let t;
       const run = () => {
         clearTimeout(t);
@@ -464,198 +412,151 @@ const ContextProvider = ({ children }) => {
       return run;
     };
 
-    const reloadVerifications = debounce(async () => {
+    const reloadVerifications = debounced(async () => {
       try {
         setVerificationStatus((await getVerificationStatusAPI()) || []);
       } catch (e) {
         console.error(e);
       }
     });
-
-    const reloadMyWorkers = debounce(async () => {
+    const reloadWorkers = debounced(async () => {
       try {
         setMyWorkers((await getMyWorkers()) || []);
       } catch (e) {
         console.error(e);
       }
     });
-
-    const reloadAvailableWorkers = debounce(async () => {
+    const reloadAvailable = debounced(async () => {
       try {
         setAvailableWorkers((await getAvailableWorkers()) || []);
       } catch (e) {
         console.error(e);
       }
     });
-
-    const reloadWorkerInvitations = debounce(async () => {
+    const reloadWorkerInvites = debounced(async () => {
       try {
         setMyInvitations((await getWorkerInvitations()) || []);
       } catch (e) {
         console.error(e);
       }
     });
-
-    const reloadManagerInvitations = debounce(async () => {
+    const reloadManagerInvites = debounced(async () => {
       try {
         setManagerInvitations((await getManagerInvitations()) || []);
       } catch (e) {
         console.error(e);
       }
     });
-
-    const reloadAdminData = debounce(async () => {
+    const reloadAdmin = debounced(async () => {
       try {
         const [infos, requests] = await Promise.all([
           getAdminInfos(),
           getManagerRequests(),
         ]);
         setAdminInfos(infos || []);
-        setManagerRequests(getPendingManagerRequests(requests));
+        setManagerRequests(pendingOnly(requests));
       } catch (e) {
         console.error(e);
       }
     });
 
-    socket.on("connect", handleConnect);
-    socket.connect();
-    if (socket.connected) handleConnect();
+    const updates = ["task_updated", "task_status_updated", "task_updated_by_worker"];
+    const deletes = ["task_deleted", "task_removed"];
 
-    const logEvent = (event, ...args) => console.log("[socket]", event, args);
-    if (import.meta.env?.DEV) socket.onAny(logEvent);
-
-    socket.on("new_task_assigned", handleNewTask);
-    socket.on("new_notification", handleNotification);
-    socket.on("user_updated", handleUserUpdated);
-
-    const updateEvents = [
-      "task_updated",
-      "task_status_updated",
-      "task_updated_by_worker",
-    ];
-    const deleteEvents = ["task_deleted", "task_removed"];
-
-    socket.on("task_created", handleTaskCreated);
-    updateEvents.forEach((e) => socket.on(e, handleTaskUpdate));
-    deleteEvents.forEach((e) => socket.on(e, handleTaskDelete));
+    socket.on("new_task_assigned", onNewTask);
+    socket.on("new_notification", onNotification);
+    socket.on("user_updated", onUserUpdated);
+    socket.on("task_created", onTaskCreated);
+    updates.forEach((e) => socket.on(e, onTaskUpdate));
+    deletes.forEach((e) => socket.on(e, onTaskDelete));
 
     if (role === "manager") {
       socket.on("verification_updated", reloadVerifications);
-      socket.on("my_workers_updated", reloadMyWorkers);
-      socket.on("available_workers_updated", reloadAvailableWorkers);
-      socket.on("manager_invites_updated", reloadManagerInvitations);
-      socket.on("invite_updated", reloadManagerInvitations);
+      socket.on("my_workers_updated", reloadWorkers);
+      socket.on("available_workers_updated", reloadAvailable);
+      socket.on("manager_invites_updated", reloadManagerInvites);
+      socket.on("invite_updated", reloadManagerInvites);
     }
-
     if (role === "worker") {
-      socket.on("invite_received", reloadWorkerInvitations);
-      socket.on("invite_updated", reloadWorkerInvitations);
+      socket.on("invite_received", reloadWorkerInvites);
+      socket.on("invite_updated", reloadWorkerInvites);
     }
-
     if (role === "admin") {
-      socket.on("admin_info_updated", reloadAdminData);
-      socket.on("manager_requests_updated", reloadAdminData);
+      socket.on("admin_info_updated", reloadAdmin);
+      socket.on("manager_requests_updated", reloadAdmin);
     }
 
     return () => {
-      reloadVerifications.cancel();
-      reloadMyWorkers.cancel();
-      reloadAvailableWorkers.cancel();
-      reloadWorkerInvitations.cancel();
-      reloadManagerInvitations.cancel();
-      reloadAdminData.cancel();
       clearTimeout(softTimer);
+      reloadVerifications.cancel();
+      reloadWorkers.cancel();
+      reloadAvailable.cancel();
+      reloadWorkerInvites.cancel();
+      reloadManagerInvites.cancel();
+      reloadAdmin.cancel();
 
-      if (import.meta.env?.DEV) socket.offAny(logEvent);
-
-      socket.off("connect", handleConnect);
-      socket.off("new_task_assigned", handleNewTask);
-      socket.off("new_notification", handleNotification);
-      socket.off("user_updated", handleUserUpdated);
-      socket.off("task_created", handleTaskCreated);
-      updateEvents.forEach((e) => socket.off(e, handleTaskUpdate));
-      deleteEvents.forEach((e) => socket.off(e, handleTaskDelete));
+      socket.off("new_task_assigned", onNewTask);
+      socket.off("new_notification", onNotification);
+      socket.off("user_updated", onUserUpdated);
+      socket.off("task_created", onTaskCreated);
+      updates.forEach((e) => socket.off(e, onTaskUpdate));
+      deletes.forEach((e) => socket.off(e, onTaskDelete));
       socket.off("verification_updated", reloadVerifications);
-      socket.off("my_workers_updated", reloadMyWorkers);
-      socket.off("available_workers_updated", reloadAvailableWorkers);
-      socket.off("manager_invites_updated", reloadManagerInvitations);
-      socket.off("invite_updated", reloadManagerInvitations);
-      socket.off("invite_received", reloadWorkerInvitations);
-      socket.off("invite_updated", reloadWorkerInvitations);
-      socket.off("admin_info_updated", reloadAdminData);
-      socket.off("manager_requests_updated", reloadAdminData);
-
-      socket.disconnect();
+      socket.off("my_workers_updated", reloadWorkers);
+      socket.off("available_workers_updated", reloadAvailable);
+      socket.off("manager_invites_updated", reloadManagerInvites);
+      socket.off("invite_updated", reloadManagerInvites);
+      socket.off("invite_received", reloadWorkerInvites);
+      socket.off("invite_updated", reloadWorkerInvites);
+      socket.off("admin_info_updated", reloadAdmin);
+      socket.off("manager_requests_updated", reloadAdmin);
     };
-  }, [userId, role, refresh, syncUser]);
+  }, [userId, role]);
 
-  // =========================
-  // CONTEXT
-  // =========================
   return (
     <>
       <context.Provider
         value={{
           isCreateTaskModalOpen,
           setIsCreateTaskModalOpen,
-
           paymentModalOpen,
           setPaymentModalOpen,
-
           user,
           setUser,
-
           allUsers,
           setAllUsers,
-
           allTasks,
           setAllTasks,
-
           myTasks,
           setMyTasks,
-
           notifications,
           setNotifications,
-
           verificationStatus,
           setVerificationStatus,
-
           isLoading,
           setIsLoading,
-
           isRefreshing,
           setIsRefreshing,
-
           adminInfos,
           setAdminInfos,
-
           managerRequests,
           setManagerRequests,
-
           myWorkers,
           setMyWorkers,
-
           myApprovedTasks,
           setMyApprovedTasks,
-
           myRejectedTasks,
           setMyRejectedTasks,
-
           availableWorkers,
           setAvailableWorkers,
-
           myInvitations,
           setMyInvitations,
-
           managerInvitations,
           setManagerInvitations,
-
           mySubscription,
           setMySubscription,
-
           allPlans,
           setAllPlans,
-
           refresh,
           syncUser,
           addTask,
@@ -677,7 +578,6 @@ const ContextProvider = ({ children }) => {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10">
             <MailWarning className="h-7 w-7 text-sky-400" />
           </div>
-
           <h2 className="text-lg font-semibold text-white">
             Email verification required
           </h2>
@@ -685,7 +585,6 @@ const ContextProvider = ({ children }) => {
             Please verify your email address to unlock all features of your
             account. Go to your profile to verify.
           </p>
-
           <div className="mt-5 w-full rounded-xl border border-slate-800 bg-[#0b1220] px-4 py-3 text-left">
             <p className="text-xs font-medium text-slate-300">
               Can&apos;t find the email?
@@ -694,7 +593,6 @@ const ContextProvider = ({ children }) => {
               Check spam/junk, or resend the code from your profile.
             </p>
           </div>
-
           <button
             type="button"
             onClick={() => setIsVerifyModalOpen(false)}
