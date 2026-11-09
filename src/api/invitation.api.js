@@ -53,3 +53,12 @@ export const rejectInvite = async (invitationId) => {
         throw error.response?.data || error;
     }
 }
+
+export const leaveTeam = async () => {
+    try {
+        const res = await api.put("/leave-team");
+        return res.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+}

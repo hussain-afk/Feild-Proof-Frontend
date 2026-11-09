@@ -20,6 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import useSubscriptions from "../hooks/useSubscriptions";
+import { getMySubscription } from "../api/billing.api";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -418,7 +419,13 @@ function AllPlans() {
   const { handleCancelSubscription, handleCreateCheckoutSession } =
     useSubscriptions();
 
-  const { allPlans, mySubscription, syncUser, refresh } = useContext(context);
+  const {
+    allPlans,
+    mySubscription,
+    setMySubscription,
+    syncUser,
+    refresh,
+  } = useContext(context);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const paymentHandled = useRef(false);
@@ -448,15 +455,40 @@ function AllPlans() {
       paymentHandled.current = true;
       toast.success("Payment successful. Updating your plan...");
 
-      if (typeof refresh === "function") {
-        refresh();
-      } else if (typeof syncUser === "function") {
-        syncUser();
-      }
+      const sessionId = searchParams.get("session_id");
 
-      setSearchParams({}, { replace: true });
+      const waitForWebhookUpdate = async () => {
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          try {
+            const subscription = await getMySubscription();
+
+            if (
+              subscription &&
+              (!sessionId || subscription.stripeSessionId === sessionId)
+            ) {
+              setMySubscription(subscription);
+              setSearchParams({}, { replace: true });
+              return;
+            }
+          } catch (error) {
+            console.error("Subscription refresh after payment failed:", error);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        if (typeof refresh === "function") {
+          await refresh({ force: true });
+        } else if (typeof syncUser === "function") {
+          await syncUser();
+        }
+
+        setSearchParams({}, { replace: true });
+      };
+
+      waitForWebhookUpdate();
     }
-  }, [searchParams, setSearchParams, syncUser, refresh]);
+  }, [searchParams, setSearchParams, setMySubscription, syncUser, refresh]);
 
   const handleChoosePlan = async (plan) => {
     if (isFreePlan(plan)) return;

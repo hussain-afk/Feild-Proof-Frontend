@@ -9,22 +9,27 @@ import {
   getMyWorkers,
   getAvailableWorkers,
 } from "../api/auth.api.js";
+
 import { getAllTasks, getMyTasks } from "../api/task.api.js";
 import { getNotifications } from "../api/notification.api.js";
+
 import {
   getVerificationStatusAPI,
   getMyApprovedTasks,
   getMyRejectedTasks,
 } from "../api/verification.api.js";
+
 import {
   getAdminInfos,
   getManagerRequests,
   getAllPlans,
 } from "../api/admin.api.js";
+
 import {
   getWorkerInvitations,
   getManagerInvitations,
 } from "../api/invitation.api.js";
+
 import { getMySubscription } from "../api/billing.api.js";
 import { socket } from "../services/socket.js";
 import Modal from "../ui/Modal.jsx";
@@ -44,12 +49,18 @@ const addIfNew = (list, item) =>
 
 const sameUser = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-const HOME = { manager: "/manager", admin: "/admin", worker: "/worker" };
+const HOME = {
+  manager: "/manager",
+  admin: "/admin",
+  worker: "/worker",
+};
+
 const REFRESH_GAP = 30 * 1000;
 const POLL_MS = 60 * 1000;
 
-// API result se value nikaalo
-const ok = (result) => (result.status === "fulfilled" ? result.value : null);
+// API result helper
+const ok = (result) =>
+  result?.status === "fulfilled" ? result.value : null;
 
 const ContextProvider = ({ children }) => {
   const navigate = useNavigate();
@@ -68,6 +79,7 @@ const ContextProvider = ({ children }) => {
   const [availableWorkers, setAvailableWorkers] = useState([]);
   const [myInvitations, setMyInvitations] = useState([]);
   const [managerInvitations, setManagerInvitations] = useState([]);
+
   const [mySubscription, setMySubscription] = useState(null);
   const [allPlans, setAllPlans] = useState([]);
 
@@ -103,17 +115,27 @@ const ContextProvider = ({ children }) => {
       getMyApprovedTasks(),
       getMyRejectedTasks(),
     ]);
-    if (a.status === "fulfilled") setMyApprovedTasks(a.value || []);
-    if (r.status === "fulfilled") setMyRejectedTasks(r.value || []);
+
+    if (a.status === "fulfilled") {
+      setMyApprovedTasks(a.value || []);
+    }
+
+    if (r.status === "fulfilled") {
+      setMyRejectedTasks(r.value || []);
+    }
   }, []);
 
   // ----- role data -----
   const fetchRoleData = useCallback(
     async (userRole, options = {}) => {
       if (!userRole) return;
-      if (options.showLoader) setIsLoading(true);
+
+      if (options.showLoader) {
+        setIsLoading(true);
+      }
 
       try {
+        // MANAGER
         if (userRole === "manager") {
           const res = await Promise.allSettled([
             getAllTasks(),
@@ -125,35 +147,55 @@ const ContextProvider = ({ children }) => {
             getAllPlans(),
             getNotifications(),
           ]);
+
           setAllTasks(ok(res[0]) || []);
           setVerificationStatus(ok(res[1]) || []);
           setMyWorkers(ok(res[2]) || []);
           setAvailableWorkers(ok(res[3]) || []);
           setManagerInvitations(ok(res[4]) || []);
-          setMySubscription(ok(res[5]) ?? null);
+
+          // IMPORTANT:
+          // Failed subscription API must not overwrite
+          // an existing Socket.IO subscription with null.
+          const subscriptionResult = ok(res[5]);
+
+          if (subscriptionResult) {
+            setMySubscription(subscriptionResult);
+          } else {
+            console.warn(
+              "Subscription API failed or returned empty data. Keeping existing subscription."
+            );
+          }
+
           setAllPlans(ok(res[6]) || []);
           setNotifications(ok(res[7]) || []);
+
           await fetchReviewedTasks();
         }
 
+        // WORKER
         if (userRole === "worker") {
           const res = await Promise.allSettled([
             getMyTasks(),
             getNotifications(),
             getWorkerInvitations(),
           ]);
+
           setMyTasks(ok(res[0]) || []);
           setNotifications(ok(res[1]) || []);
           setMyInvitations(ok(res[2]) || []);
+
           await fetchReviewedTasks();
         }
 
+        // ADMIN
         if (userRole === "admin") {
           const res = await Promise.allSettled([
             getAdminInfos(),
             getAllUsers(),
             getManagerRequests(),
           ]);
+
           setAdminInfos(ok(res[0]) || []);
           setAllUsers(ok(res[1]) || []);
           setManagerRequests(pendingOnly(ok(res[2])));
@@ -163,7 +205,9 @@ const ContextProvider = ({ children }) => {
       } catch (err) {
         console.error("fetchRoleData:", err);
       } finally {
-        if (options.showLoader) setIsLoading(false);
+        if (options.showLoader) {
+          setIsLoading(false);
+        }
       }
     },
     [fetchReviewedTasks]
@@ -174,6 +218,7 @@ const ContextProvider = ({ children }) => {
     async (partial) => {
       try {
         const fresh = partial ? null : await getCurrentUser();
+
         if (!partial && !fresh) return;
 
         setUser((prev) => {
@@ -182,6 +227,7 @@ const ContextProvider = ({ children }) => {
         });
 
         const newRole = (partial || fresh)?.role;
+
         if (newRole && newRole !== roleRef.current) {
           roleRef.current = newRole;
           await fetchRoleData(newRole);
@@ -193,15 +239,20 @@ const ContextProvider = ({ children }) => {
     [fetchRoleData]
   );
 
-  // ----- refresh (30s gap + ek waqt ek) -----
-  const refresh = useCallback(async () => {
+  // ----- refresh -----
+  const refresh = useCallback(async (options = {}) => {
     if (!roleRef.current || busy.current) return;
-    if (Date.now() - lastFetch.current < REFRESH_GAP) return;
+
+    if (!options.force && Date.now() - lastFetch.current < REFRESH_GAP) return;
 
     busy.current = true;
     setIsRefreshing(true);
+
     try {
-      await Promise.all([fetchRoleData(roleRef.current), syncUser()]);
+      await Promise.all([
+        fetchRoleData(roleRef.current),
+        syncUser(),
+      ]);
     } catch (err) {
       console.error("refresh:", err);
     } finally {
@@ -218,12 +269,16 @@ const ContextProvider = ({ children }) => {
     syncRef.current = syncUser;
   }, [syncUser]);
 
+  // ----- task helpers -----
   const addTask = useCallback((task) => {
-    if (task && getId(task)) setAllTasks((old) => addIfNew(old, task));
+    if (task && getId(task)) {
+      setAllTasks((old) => addIfNew(old, task));
+    }
   }, []);
 
   const removeTask = useCallback((taskId) => {
     const drop = (old) => old.filter((t) => getId(t) !== taskId);
+
     setAllTasks(drop);
     setMyTasks(drop);
   }, []);
@@ -235,19 +290,26 @@ const ContextProvider = ({ children }) => {
     (async () => {
       try {
         setIsLoading(true);
+
         const current = await getCurrentUser();
+
         if (stop) return;
 
         setUser(current);
+
         if (!current) return;
 
         if (current.isBanned) {
-          toast.error("Your account has been banned. Please contact support.");
+          toast.error(
+            "Your account has been banned. Please contact support."
+          );
+
           navRef.current("/banned");
           return;
         }
 
         await fetchRoleData(current.role);
+
         if (stop) return;
 
         if (current.isVerified === false && !verifyShown.current) {
@@ -255,13 +317,18 @@ const ContextProvider = ({ children }) => {
           setIsVerifyModalOpen(true);
         }
 
-        if (window.location.pathname === "/auth" && HOME[current.role]) {
+        if (
+          window.location.pathname === "/auth" &&
+          HOME[current.role]
+        ) {
           navRef.current(HOME[current.role]);
         }
       } catch (err) {
         console.error("loadData:", err);
       } finally {
-        if (!stop) setIsLoading(false);
+        if (!stop) {
+          setIsLoading(false);
+        }
       }
     })();
 
@@ -289,26 +356,28 @@ const ContextProvider = ({ children }) => {
       setMySubscription(null);
       setAllPlans([]);
     }
+
     prevUserId.current = userId || null;
   }, [userId]);
 
-  useEffect(() => {
-    if (user?.isVerified) setIsVerifyModalOpen(false);
-  }, [user?.isVerified]);
-
-  // ----- tab focus -----
+  // ----- tab focus + fallback polling -----
   useEffect(() => {
     if (!userId) return;
 
     const onFocus = () => {
-      if (document.visibilityState === "visible") refreshRef.current?.();
+      if (document.visibilityState === "visible") {
+        refreshRef.current?.();
+      }
     };
 
     document.addEventListener("visibilitychange", onFocus);
     window.addEventListener("focus", onFocus);
 
     const timer = setInterval(() => {
-      if (!socket.connected && document.visibilityState === "visible") {
+      if (
+        !socket.connected &&
+        document.visibilityState === "visible"
+      ) {
         refreshRef.current?.();
       }
     }, POLL_MS);
@@ -325,18 +394,31 @@ const ContextProvider = ({ children }) => {
     if (!userId) return;
 
     const onConnect = () => {
+      console.log("Socket connected:", socket.id);
+
       socket.emit("join_room", userId);
+
       if (Date.now() - lastFetch.current > REFRESH_GAP) {
         refreshRef.current?.();
       }
     };
 
+    const onConnectError = (error) => {
+      console.error("Socket connection error:", error.message);
+    };
+
     socket.on("connect", onConnect);
+    socket.on("connect_error", onConnectError);
+
     socket.connect();
-    if (socket.connected) onConnect();
+
+    if (socket.connected) {
+      onConnect();
+    }
 
     return () => {
       socket.off("connect", onConnect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
     };
   }, [userId]);
@@ -346,50 +428,75 @@ const ContextProvider = ({ children }) => {
     if (!userId) return;
 
     let softTimer;
+
     const softRefresh = () => {
       clearTimeout(softTimer);
-      softTimer = setTimeout(() => refreshRef.current?.(), 400);
+
+      softTimer = setTimeout(() => {
+        refreshRef.current?.();
+      }, 400);
     };
 
     const onNewTask = (data = {}) => {
       const task = data.task || data.data;
-      if (task) {
+
+      if (task && getId(task)) {
         setAllTasks((old) => addIfNew(old, task));
         setMyTasks((old) => addIfNew(old, task));
       }
+
       if (data.notification) {
-        setNotifications((old) => addIfNew(old, data.notification));
+        setNotifications((old) =>
+          addIfNew(old, data.notification)
+        );
       }
+
       toast.success(data.message || "New task assigned!");
     };
 
     const onTaskCreated = (data = {}) => {
       const task = data.task || data.data;
-      if (task && getId(task)) setAllTasks((old) => addIfNew(old, task));
-      else softRefresh();
+
+      if (task && getId(task)) {
+        setAllTasks((old) => addIfNew(old, task));
+      } else {
+        softRefresh();
+      }
     };
 
     const onTaskUpdate = (data = {}) => {
       const updated = data.task || data.data || data;
       const id = getId(updated);
+
       if (!id) return softRefresh();
+
       const merge = (old) =>
-        old.map((t) => (getId(t) === id ? { ...t, ...updated } : t));
+        old.map((t) =>
+          getId(t) === id ? { ...t, ...updated } : t
+        );
+
       setAllTasks(merge);
       setMyTasks(merge);
     };
 
     const onTaskDelete = (data = {}) => {
       const id = data.taskId || data.id || getId(data.task);
+
       if (!id) return softRefresh();
-      const drop = (old) => old.filter((t) => getId(t) !== id);
+
+      const drop = (old) =>
+        old.filter((t) => getId(t) !== id);
+
       setAllTasks(drop);
       setMyTasks(drop);
     };
 
     const onNotification = (data = {}) => {
       const n = data.notification || data;
-      if (getId(n)) setNotifications((old) => addIfNew(old, n));
+
+      if (getId(n)) {
+        setNotifications((old) => addIfNew(old, n));
+      }
     };
 
     const onUserUpdated = (data = {}) => {
@@ -398,27 +505,34 @@ const ContextProvider = ({ children }) => {
         navRef.current("/banned");
         return;
       }
+
       syncRef.current?.(data.user);
     };
 
-    // chhota debounce helper
+    // Debounce helper
     const debounced = (fn) => {
       let t;
+
       const run = () => {
         clearTimeout(t);
         t = setTimeout(fn, 500);
       };
+
       run.cancel = () => clearTimeout(t);
+
       return run;
     };
 
     const reloadVerifications = debounced(async () => {
       try {
-        setVerificationStatus((await getVerificationStatusAPI()) || []);
+        setVerificationStatus(
+          (await getVerificationStatusAPI()) || []
+        );
       } catch (e) {
         console.error(e);
       }
     });
+
     const reloadWorkers = debounced(async () => {
       try {
         setMyWorkers((await getMyWorkers()) || []);
@@ -426,33 +540,44 @@ const ContextProvider = ({ children }) => {
         console.error(e);
       }
     });
+
     const reloadAvailable = debounced(async () => {
       try {
-        setAvailableWorkers((await getAvailableWorkers()) || []);
+        setAvailableWorkers(
+          (await getAvailableWorkers()) || []
+        );
       } catch (e) {
         console.error(e);
       }
     });
+
     const reloadWorkerInvites = debounced(async () => {
       try {
-        setMyInvitations((await getWorkerInvitations()) || []);
+        setMyInvitations(
+          (await getWorkerInvitations()) || []
+        );
       } catch (e) {
         console.error(e);
       }
     });
+
     const reloadManagerInvites = debounced(async () => {
       try {
-        setManagerInvitations((await getManagerInvitations()) || []);
+        setManagerInvitations(
+          (await getManagerInvitations()) || []
+        );
       } catch (e) {
         console.error(e);
       }
     });
+
     const reloadAdmin = debounced(async () => {
       try {
         const [infos, requests] = await Promise.all([
           getAdminInfos(),
           getManagerRequests(),
         ]);
+
         setAdminInfos(infos || []);
         setManagerRequests(pendingOnly(requests));
       } catch (e) {
@@ -460,13 +585,31 @@ const ContextProvider = ({ children }) => {
       }
     });
 
-    const updates = ["task_updated", "task_status_updated", "task_updated_by_worker"];
-    const deletes = ["task_deleted", "task_removed"];
+    // ----- REALTIME SUBSCRIPTION UPDATE -----
+    const handleSubscriptionUpdate = (data) => {
+      console.log("REALTIME SUBSCRIPTION EVENT:", data);
+
+      if (!data) return;
+
+      setMySubscription(data);
+    };
+
+    const updates = [
+      "task_updated",
+      "task_status_updated",
+      "task_updated_by_worker",
+    ];
+
+    const deletes = [
+      "task_deleted",
+      "task_removed",
+    ];
 
     socket.on("new_task_assigned", onNewTask);
     socket.on("new_notification", onNotification);
     socket.on("user_updated", onUserUpdated);
     socket.on("task_created", onTaskCreated);
+
     updates.forEach((e) => socket.on(e, onTaskUpdate));
     deletes.forEach((e) => socket.on(e, onTaskDelete));
 
@@ -476,11 +619,15 @@ const ContextProvider = ({ children }) => {
       socket.on("available_workers_updated", reloadAvailable);
       socket.on("manager_invites_updated", reloadManagerInvites);
       socket.on("invite_updated", reloadManagerInvites);
+
+      socket.on("subscription", handleSubscriptionUpdate);
     }
+
     if (role === "worker") {
       socket.on("invite_received", reloadWorkerInvites);
       socket.on("invite_updated", reloadWorkerInvites);
     }
+
     if (role === "admin") {
       socket.on("admin_info_updated", reloadAdmin);
       socket.on("manager_requests_updated", reloadAdmin);
@@ -488,6 +635,7 @@ const ContextProvider = ({ children }) => {
 
     return () => {
       clearTimeout(softTimer);
+
       reloadVerifications.cancel();
       reloadWorkers.cancel();
       reloadAvailable.cancel();
@@ -499,17 +647,27 @@ const ContextProvider = ({ children }) => {
       socket.off("new_notification", onNotification);
       socket.off("user_updated", onUserUpdated);
       socket.off("task_created", onTaskCreated);
-      updates.forEach((e) => socket.off(e, onTaskUpdate));
-      deletes.forEach((e) => socket.off(e, onTaskDelete));
+
+      updates.forEach((e) =>
+        socket.off(e, onTaskUpdate)
+      );
+
+      deletes.forEach((e) =>
+        socket.off(e, onTaskDelete)
+      );
+
       socket.off("verification_updated", reloadVerifications);
       socket.off("my_workers_updated", reloadWorkers);
       socket.off("available_workers_updated", reloadAvailable);
       socket.off("manager_invites_updated", reloadManagerInvites);
       socket.off("invite_updated", reloadManagerInvites);
+
       socket.off("invite_received", reloadWorkerInvites);
-      socket.off("invite_updated", reloadWorkerInvites);
+
       socket.off("admin_info_updated", reloadAdmin);
       socket.off("manager_requests_updated", reloadAdmin);
+
+      socket.off("subscription", handleSubscriptionUpdate);
     };
   }, [userId, role]);
 
@@ -519,44 +677,64 @@ const ContextProvider = ({ children }) => {
         value={{
           isCreateTaskModalOpen,
           setIsCreateTaskModalOpen,
+
           paymentModalOpen,
           setPaymentModalOpen,
+
           user,
           setUser,
+
           allUsers,
           setAllUsers,
+
           allTasks,
           setAllTasks,
+
           myTasks,
           setMyTasks,
+
           notifications,
           setNotifications,
+
           verificationStatus,
           setVerificationStatus,
+
           isLoading,
           setIsLoading,
+
           isRefreshing,
           setIsRefreshing,
+
           adminInfos,
           setAdminInfos,
+
           managerRequests,
           setManagerRequests,
+
           myWorkers,
           setMyWorkers,
+
           myApprovedTasks,
           setMyApprovedTasks,
+
           myRejectedTasks,
           setMyRejectedTasks,
+
           availableWorkers,
           setAvailableWorkers,
+
           myInvitations,
           setMyInvitations,
+
           managerInvitations,
           setManagerInvitations,
+
           mySubscription,
           setMySubscription,
+
           allPlans,
           setAllPlans,
+
           refresh,
           syncUser,
           addTask,
@@ -569,7 +747,7 @@ const ContextProvider = ({ children }) => {
       </context.Provider>
 
       <Modal
-        isOpen={isVerifyModalOpen}
+        isOpen={isVerifyModalOpen && user?.isVerified !== true}
         onClose={() => setIsVerifyModalOpen(false)}
         title="Verify your email"
         subtitle="Confirm your email to unlock all features."
@@ -578,21 +756,26 @@ const ContextProvider = ({ children }) => {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10">
             <MailWarning className="h-7 w-7 text-sky-400" />
           </div>
+
           <h2 className="text-lg font-semibold text-white">
             Email verification required
           </h2>
+
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-400">
             Please verify your email address to unlock all features of your
             account. Go to your profile to verify.
           </p>
+
           <div className="mt-5 w-full rounded-xl border border-slate-800 bg-[#0b1220] px-4 py-3 text-left">
             <p className="text-xs font-medium text-slate-300">
               Can&apos;t find the email?
             </p>
+
             <p className="mt-1 text-xs text-slate-500">
               Check spam/junk, or resend the code from your profile.
             </p>
           </div>
+
           <button
             type="button"
             onClick={() => setIsVerifyModalOpen(false)}

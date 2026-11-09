@@ -36,6 +36,7 @@ import {
   Clock3,
   Fingerprint,
 } from "lucide-react";
+import useInvitation from "../hooks/useInvitation.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -99,7 +100,7 @@ function getSubscriptionView(sub) {
     sub.plan === "trial"
       ? "Free trial"
       : String(sub.plan).charAt(0).toUpperCase() +
-        String(sub.plan).slice(1);
+      String(sub.plan).slice(1);
 
   return {
     planLabel,
@@ -254,11 +255,10 @@ function FormMessage({ message }) {
   return (
     <div
       role={success ? "status" : "alert"}
-      className={`mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${
-        success
+      className={`mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${success
           ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
           : "border-rose-500/20 bg-rose-500/[0.07] text-rose-300"
-      }`}
+        }`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
 
@@ -303,11 +303,10 @@ function SubscriptionCard({ subscription }) {
           </div>
 
           <span
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-              sub.active
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${sub.active
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                 : "border-rose-500/20 bg-rose-500/10 text-rose-400"
-            }`}
+              }`}
           >
             {sub.statusLabel}
           </span>
@@ -357,6 +356,7 @@ function SubscriptionCard({ subscription }) {
 
 const ProfilePage = () => {
   const { updateProfile } = useAuth();
+  const { handleLeaveTeam } = useInvitation();
 
   const { user, setUser, isLoading, mySubscription } = useContext(context);
 
@@ -399,6 +399,10 @@ const ProfilePage = () => {
       clearTimeout(copyTimerRef.current);
     };
   }, []);
+
+  const handleLeavesTeam = async () => {
+    await handleLeaveTeam();
+  }
 
   const clearPreviewUrl = () => {
     if (blobUrlRef.current) {
@@ -558,9 +562,9 @@ const ProfilePage = () => {
 
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
+      month: "long",
+      year: "numeric",
+    })
     : null;
 
   const strength = getPasswordStrength(form.password);
@@ -1011,11 +1015,10 @@ const ProfilePage = () => {
                       {[1, 2, 3, 4].map((i) => (
                         <span
                           key={i}
-                          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                            i <= strength.score
+                          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${i <= strength.score
                               ? strength.color
                               : "bg-slate-800"
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -1028,7 +1031,46 @@ const ProfilePage = () => {
                   </div>
                 )}
               </div>
+
+              {/* Leave Manager Team - UI Only */}
+              {user?.role === "worker" && user?.managerId && (
+                <div className="mt-5 relative overflow-hidden rounded-2xl border border-rose-500/20 bg-[#111827] p-5">
+                  {/* Background glow */}
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-500/[0.06] blur-3xl" />
+
+                  <div className="relative">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10">
+                        <Users className="h-5 w-5 text-rose-400" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-white">
+                          Team membership
+                        </h3>
+
+                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                          You are currently assigned to a manager's team.
+                          You can leave your current team whenever you need to.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleLeavesTeam}
+                      className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 text-xs font-semibold text-rose-400 transition-all duration-200 hover:border-rose-500/50 hover:bg-rose-500/[0.15] hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827] active:scale-[0.98]"
+                    >
+                      <Users className="h-4 w-4" />
+                      Leave this manager's team
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </FormSection>
+
+
 
             {/* Save changes bar */}
             <div className="sticky bottom-0 z-10 border-t border-slate-800 bg-[#111827]/95 p-4 backdrop-blur-xl sm:p-6">
@@ -1037,9 +1079,8 @@ const ProfilePage = () => {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5">
                   <span
-                    className={`relative flex h-2.5 w-2.5 shrink-0 rounded-full ${
-                      isDirty ? "bg-amber-400" : "bg-emerald-400"
-                    }`}
+                    className={`relative flex h-2.5 w-2.5 shrink-0 rounded-full ${isDirty ? "bg-amber-400" : "bg-emerald-400"
+                      }`}
                   >
                     {isDirty && (
                       <span className="absolute inset-0 animate-ping rounded-full bg-amber-400 opacity-40" />

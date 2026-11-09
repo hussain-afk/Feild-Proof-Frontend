@@ -2,6 +2,7 @@ import {
   inviteWorker,
   acceptInvite,
   rejectInvite,
+  leaveTeam,
 } from "../api/invitation.api.js";
 import toast from "react-hot-toast";
 import { useContext } from "react";
@@ -19,8 +20,8 @@ const useInvitation = () => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          error.message ||
-          "Error sending invitation"
+        error.message ||
+        "Error sending invitation"
       );
     } finally {
       setIsLoading(false);
@@ -75,7 +76,23 @@ const useInvitation = () => {
     }
   };
 
-  return { handleInviteWorker, handleAcceptInvite, handleRejectInvite };
+  const handleLeaveTeam = async () => {
+    try {
+      setIsLoading(true);
+      const response = await leaveTeam();
+      toast.success(response.message || "Left the team successfully");
+      if (syncUser) {
+        await syncUser();
+      }
+      return response;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error leaving team");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleInviteWorker, handleAcceptInvite, handleRejectInvite, handleLeaveTeam };
 };
 
 export default useInvitation;

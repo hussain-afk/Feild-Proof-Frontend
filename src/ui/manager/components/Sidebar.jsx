@@ -14,10 +14,12 @@ import {
   ShieldCheck,
   X,
   MessageCircle,
+  Lock,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
 import { NavLink } from "react-router-dom";
+import { canUseChatPlan } from "../../../utils/PlanAccess.jsx";
 
 const focusRing =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
@@ -48,7 +50,8 @@ function ManagerSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const { user } = useContext(context);
+  const { user, mySubscription } = useContext(context);
+  const chatOpen = canUseChatPlan(mySubscription);
   const { logout } = useAuth();
 
   const onLogout = async () => {
@@ -63,23 +66,67 @@ function ManagerSidebar() {
     {
       title: "Workspace",
       items: [
-        { id: "tasks", label: "Field tasks", path: "/manager", icon: ListTodo, end: true },
-        { id: "verification", label: "Verification", path: "/manager/verification", icon: BadgeCheck, end: false },
-        { id: "reviewed", label: "Reviewed", path: "/manager/reviewed", icon: ClipboardCheck, end: false },
+        {
+          id: "tasks",
+          label: "Field tasks",
+          path: "/manager",
+          icon: ListTodo,
+          end: true,
+        },
+        {
+          id: "verification",
+          label: "Verification",
+          path: "/manager/verification",
+          icon: BadgeCheck,
+          end: false,
+        },
+        {
+          id: "reviewed",
+          label: "Reviewed",
+          path: "/manager/reviewed",
+          icon: ClipboardCheck,
+          end: false,
+        },
+        {
+          id: "chat",
+          label: "Chat",
+          path: "/manager/chat",
+          icon: MessageCircle,
+          end: false,
+          locked: !chatOpen,
+          badge: chatOpen ? null : "Pro",
+        },
       ],
     },
     {
       title: "Team",
       items: [
-        { id: "available-workers", label: "Available workers", path: "/manager/available-workers", icon: Users, end: false },
-        { id: "pending-invites", label: "Pending invites", path: "/manager/pending-invites", icon: Mail, end: false },
-        { id: "chat", label: "Chat", path: "/manager/chat", icon: MessageCircle, end: false },
+        {
+          id: "available-workers",
+          label: "Available workers",
+          path: "/manager/available-workers",
+          icon: Users,
+          end: false,
+        },
+        {
+          id: "pending-invites",
+          label: "Pending invites",
+          path: "/manager/pending-invites",
+          icon: Mail,
+          end: false,
+        },
       ],
     },
     {
       title: "Account",
       items: [
-        { id: "profile", label: "Profile", path: `/manager/me/${user?._id}`, icon: UserCircle, end: false },
+        {
+          id: "profile",
+          label: "Profile",
+          path: `/manager/me/${user?._id}`,
+          icon: UserCircle,
+          end: false,
+        },
       ],
     },
   ];
@@ -134,7 +181,6 @@ function ManagerSidebar() {
           ${isCollapsed ? "lg:w-[76px]" : "lg:w-[272px]"}
         `}
       >
-        {/* Collapse */}
         <button
           type="button"
           onClick={() => setIsCollapsed((c) => !c)}
@@ -182,7 +228,6 @@ function ManagerSidebar() {
             showLabels ? "overflow-y-auto" : "overflow-visible"
           }`}
         >
-
           <div className="space-y-5">
             {sections.map((section, sectionIndex) => (
               <div key={section.title}>
@@ -200,6 +245,47 @@ function ManagerSidebar() {
                   {section.items.map((item) => {
                     const Icon = item.icon;
 
+                    // ----- LOCKED (chat free plan) -----
+                    if (item.locked) {
+                      return (
+                        <li key={item.id}>
+                          <div
+                            title="Upgrade to Pro or Enterprise"
+                            className={`group relative flex h-11 cursor-not-allowed items-center gap-3 rounded-xl text-[13px] font-medium text-slate-500 opacity-70 ${
+                              showLabels ? "px-2.5" : "justify-center px-0"
+                            }`}
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/40 text-slate-600">
+                              <Icon className="h-4 w-4" strokeWidth={1.75} />
+                            </span>
+                            {showLabels && (
+                              <>
+                                <span className="min-w-0 flex-1 truncate">
+                                  {item.label}
+                                </span>
+                                {item.badge ? (
+                                  <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                                    {item.badge}
+                                  </span>
+                                ) : (
+                                  <Lock className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                                )}
+                              </>
+                            )}
+                            {!showLabels && (
+                              <span
+                                role="tooltip"
+                                className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-black/40 transition-opacity group-hover:opacity-100"
+                              >
+                                Chat · Pro only
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    }
+
+                    // ----- NORMAL LINK -----
                     return (
                       <li key={item.id}>
                         <NavLink
@@ -235,11 +321,6 @@ function ManagerSidebar() {
                                   {item.label}
                                 </span>
                               )}
-                              {showLabels && item.badge ? (
-                                <span className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                                  {item.badge}
-                                </span>
-                              ) : null}
                               {!showLabels && (
                                 <span
                                   role="tooltip"

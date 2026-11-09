@@ -2,6 +2,8 @@ import { useContext, useMemo, useState } from "react";
 import { ArrowLeft, MessageCircle, Search, Users, X } from "lucide-react";
 import { context } from "../../../context/context.jsx";
 import ChatPanel from "../../ChatPannel.jsx";
+import { canUseChatPlan } from '../../../utils/PlanAccess.jsx';
+import ChatLocked from "../../ChatLocked.jsx";
 
 const AVATAR_COLORS = [
   "bg-sky-500/15 text-sky-300",
@@ -22,13 +24,16 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
 
 function ManagerChatPage() {
-  const { user, myWorkers } = useContext(context);
+  const { user, myWorkers, mySubscription } = useContext(context);
   const workers = useMemo(
     () => (Array.isArray(myWorkers) ? myWorkers : []),
     [myWorkers]
   );
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
+  const chatOpen = canUseChatPlan(mySubscription);
+
+  if (!chatOpen) return <ChatLocked />;
 
   const selected = workers.find(
     (w) => String(w._id || w.id) === String(selectedId)

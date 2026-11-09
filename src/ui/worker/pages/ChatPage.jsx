@@ -1,14 +1,40 @@
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { context } from "../../../context/context.jsx";
 import ChatPanel from "../../ChatPannel.jsx";
+import ChatLocked from "../../ChatLocked.jsx"; // apna path set karo
+import { getMessages } from "../../../api/chat.api.js"; // apna api path
 import { ArrowRight, MessageCircle, Users } from "lucide-react";
 
 function WorkerChatPage() {
   const { user } = useContext(context);
+  const [locked, setLocked] = useState(false);
+
   const managerId = user?.managerId?._id || user?.managerId;
-  const managerName =
-    user?.managerId?.name || "Your manager";
+  const managerName = user?.managerId?.name || "Your manager";
+  const myUserId = user?._id || user?.id;
+
+  // Plan check: free team → 403 → lock screen
+  useEffect(() => {
+    if (!managerId) return;
+
+    let stop = false;
+
+    (async () => {
+      try {
+        await getMessages(managerId);
+      } catch (err) {
+        if (stop) return;
+        if (err?.response?.status === 403) {
+          setLocked(true);
+        }
+      }
+    })();
+
+    return () => {
+      stop = true;
+    };
+  }, [managerId]);
 
   if (!managerId) {
     return (
@@ -31,6 +57,10 @@ function WorkerChatPage() {
     );
   }
 
+  if (locked) {
+    return <ChatLocked isManager={false} />;
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
       <header className="mb-6 flex items-center gap-4">
@@ -49,7 +79,7 @@ function WorkerChatPage() {
         <ChatPanel
           otherUserId={managerId}
           otherName={managerName}
-          myUserId={user?._id || user?.id}
+          myUserId={myUserId}
         />
       </div>
     </div>

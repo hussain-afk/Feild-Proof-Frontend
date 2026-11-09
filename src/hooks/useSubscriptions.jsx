@@ -10,7 +10,7 @@ const useSubscriptions = () => {
     try {
       setIsLoading(true);
       const response = await cancelMySubscription();
-      setMySubscription(response?.subscription ?? null);
+      setMySubscription(response?.data ?? null);
       toast.success("Subscription canceled successfully");
     } catch (error) {
       toast.error(
