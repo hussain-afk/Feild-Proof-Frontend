@@ -37,7 +37,7 @@ function Stat({ icon: Icon, label, value, tone }) {
 }
 
 function PlanBanner() {
-  const { user, mySubscription } = useContext(context);
+  const { user, mySubscription, isLoading } = useContext(context);
   const [now] = useState(() => Date.now());
   const [dismissed, setDismissed] = useState(false);
 
@@ -161,6 +161,27 @@ function PlanBanner() {
       : isPro
         ? "Manage"
         : "Upgrade";
+
+        if(isLoading) {
+          return (
+            <div className="mb-6 rounded-2xl border p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3.5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-800">
+                    <Loader size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold capitalize tracking-tight text-white">
+                        Loading...
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
 
   return (
     <section
