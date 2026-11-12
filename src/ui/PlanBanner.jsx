@@ -11,6 +11,7 @@ import {
   Clock,
   Sparkles,
   X,
+  Loader,
 } from "lucide-react";
 
 const DAY_MS = 86400000;

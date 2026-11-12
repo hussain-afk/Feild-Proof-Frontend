@@ -75,6 +75,7 @@ const ContextProvider = ({ children }) => {
   const [managerRequests, setManagerRequests] = useState([]);
   const [myWorkers, setMyWorkers] = useState([]);
   const [myApprovedTasks, setMyApprovedTasks] = useState([]);
+  console.log("myApprovedTasks:", myApprovedTasks);
   const [myRejectedTasks, setMyRejectedTasks] = useState([]);
   const [availableWorkers, setAvailableWorkers] = useState([]);
   const [myInvitations, setMyInvitations] = useState([]);
