@@ -341,6 +341,10 @@ const ContextProvider = ({ children }) => {
   // ----- logout clear -----
   useEffect(() => {
     if (prevUserId.current && !userId) {
+      busy.current = false;
+      lastFetch.current = 0;
+      roleRef.current = null;
+
       setAllUsers([]);
       setAllTasks([]);
       setMyTasks([]);

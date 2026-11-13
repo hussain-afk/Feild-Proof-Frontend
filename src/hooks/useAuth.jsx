@@ -5,7 +5,7 @@ import { context } from '../context/context.jsx'
 import { useNavigate } from 'react-router-dom'
 
 const useAuth = () => {
-    const { setUser, setIsLoading } = useContext(context)
+    const { setUser, setIsLoading, fetchRoleData } = useContext(context)
     const navigate = useNavigate()
 
     const register = async (name, email, password, role) => {
@@ -15,6 +15,7 @@ const useAuth = () => {
             // console.log('User registered successfully:', response)
             setUser(response)
             Toast.success('User registered successfully')
+            await fetchRoleData(response.role)
             if (response.role === 'worker') {
                 navigate('/worker')
             }
@@ -42,6 +43,7 @@ const useAuth = () => {
             // console.log('User logged in successfully:', response)
             Toast.success('User logged in successfully')
             setUser(response)
+            await fetchRoleData(response.role)
             if (response.role === 'worker') {
                 navigate('/worker')
             }
