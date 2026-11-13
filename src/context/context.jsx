@@ -1,3 +1,4 @@
+
 import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -58,7 +59,6 @@ const HOME = {
 const REFRESH_GAP = 30 * 1000;
 const POLL_MS = 60 * 1000;
 
-// API result helper
 const ok = (result) =>
   result?.status === "fulfilled" ? result.value : null;
 
@@ -75,7 +75,6 @@ const ContextProvider = ({ children }) => {
   const [managerRequests, setManagerRequests] = useState([]);
   const [myWorkers, setMyWorkers] = useState([]);
   const [myApprovedTasks, setMyApprovedTasks] = useState([]);
-  console.log("myApprovedTasks:", myApprovedTasks);
   const [myRejectedTasks, setMyRejectedTasks] = useState([]);
   const [availableWorkers, setAvailableWorkers] = useState([]);
   const [myInvitations, setMyInvitations] = useState([]);
@@ -102,6 +101,11 @@ const ContextProvider = ({ children }) => {
   const refreshRef = useRef(null);
   const syncRef = useRef(null);
 
+  // Notification sound refs
+  const notificationAudio = useRef(null);
+  const soundEnabled = useRef(false);
+  const playedNotifications = useRef(new Set());
+
   useEffect(() => {
     navRef.current = navigate;
   }, [navigate]);
@@ -109,6 +113,72 @@ const ContextProvider = ({ children }) => {
   useEffect(() => {
     roleRef.current = role || null;
   }, [role]);
+
+  // ----- notification sound setup -----
+  useEffect(() => {
+    notificationAudio.current = new Audio("/notification.mp3");
+    notificationAudio.current.volume = 0.5;
+    notificationAudio.current.preload = "auto";
+
+    return () => {
+      if (notificationAudio.current) {
+        notificationAudio.current.pause();
+        notificationAudio.current = null;
+      }
+    };
+  }, []);
+
+  // ----- enable notification sound -----
+  const enableNotificationSound = useCallback(async () => {
+    const audio = notificationAudio.current;
+    // console.log("Enabling notification sound...");
+
+    if (!audio) return;
+
+    try {
+      audio.volume = 0;
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0.5;
+
+      soundEnabled.current = true;
+
+      toast.success("Notification sound enabled!");
+    } catch (error) {
+      soundEnabled.current = false;
+      console.error("Notification sound error:", error);
+      toast.error("Please try enabling sound again.");
+    }
+  }, []);
+
+  // ----- play notification sound -----
+  const playNotificationSound = useCallback((notification) => {
+    const audio = notificationAudio.current;
+
+    if (!soundEnabled.current || !audio) return;
+
+    const id = getId(notification);
+
+    // Prevent duplicate sound for the same notification
+    if (id && playedNotifications.current.has(String(id))) return;
+
+    if (id) {
+      playedNotifications.current.add(String(id));
+
+      // Keep the duplicate-check list limited
+      if (playedNotifications.current.size > 100) {
+        const firstId = playedNotifications.current.values().next().value;
+        playedNotifications.current.delete(firstId);
+      }
+    }
+
+    audio.currentTime = 0;
+
+    audio.play().catch((error) => {
+      console.error("Unable to play notification sound:", error);
+    });
+  }, []);
 
   // ----- reviewed tasks -----
   const fetchReviewedTasks = useCallback(async () => {
@@ -155,9 +225,6 @@ const ContextProvider = ({ children }) => {
           setAvailableWorkers(ok(res[3]) || []);
           setManagerInvitations(ok(res[4]) || []);
 
-          // IMPORTANT:
-          // Failed subscription API must not overwrite
-          // an existing Socket.IO subscription with null.
           const subscriptionResult = ok(res[5]);
 
           if (subscriptionResult) {
@@ -344,6 +411,8 @@ const ContextProvider = ({ children }) => {
       busy.current = false;
       lastFetch.current = 0;
       roleRef.current = null;
+      playedNotifications.current.clear();
+      soundEnabled.current = false;
 
       setAllUsers([]);
       setAllTasks([]);
@@ -454,6 +523,8 @@ const ContextProvider = ({ children }) => {
         setNotifications((old) =>
           addIfNew(old, data.notification)
         );
+
+        playNotificationSound(data.notification);
       }
 
       toast.success(data.message || "New task assigned!");
@@ -502,6 +573,8 @@ const ContextProvider = ({ children }) => {
       if (getId(n)) {
         setNotifications((old) => addIfNew(old, n));
       }
+
+      playNotificationSound(n);
     };
 
     const onUserUpdated = (data = {}) => {
@@ -674,7 +747,7 @@ const ContextProvider = ({ children }) => {
 
       socket.off("subscription", handleSubscriptionUpdate);
     };
-  }, [userId, role]);
+  }, [userId, role, playNotificationSound]);
 
   return (
     <>
@@ -746,6 +819,9 @@ const ContextProvider = ({ children }) => {
           removeTask,
           fetchRoleData,
           fetchReviewedTasks,
+
+          // Notification sound
+          enableNotificationSound,
         }}
       >
         {children}
