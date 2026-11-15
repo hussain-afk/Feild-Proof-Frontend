@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { context } from "../context/context.jsx";
 import useAuth from "../hooks/useAuth.jsx";
+import useInvitation from "../hooks/useInvitation.jsx";
 import VerifyEmailModal from "./VerifyEmailModal.jsx";
 import LoadingState from "./LoadingState.jsx";
 import { dismissPendingVerification } from "../services/verification.storage.js";
@@ -36,7 +37,6 @@ import {
   Clock3,
   Fingerprint,
 } from "lucide-react";
-import useInvitation from "../hooks/useInvitation.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -44,6 +44,13 @@ import useInvitation from "../hooks/useInvitation.jsx";
 
 const MAX_AVATAR_MB = 5;
 const MIN_PASSWORD_LENGTH = 6;
+const WALLET_PATTERN = /^03\d{9}$/; // 03XXXXXXXXX
+const PAYMENT_KEYS = [
+  "bankName",
+  "accountNumber",
+  "accountHolderName",
+  "jazzcashOrEasypaisaNumber",
+];
 
 const inputClass =
   "w-full h-12 rounded-xl bg-[#0b1220] border border-slate-800/90 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all duration-200 hover:border-slate-700 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10";
@@ -61,7 +68,32 @@ const fromUser = (user) => ({
   phone: user?.phone || "",
   hourlyRate: user?.hourlyRate ?? "",
   password: "",
+  // Payment details (ek hi form state mein, alag useState nahi)
+  bankName: user?.bankName || "",
+  accountNumber: user?.accountNumber || "",
+  accountHolderName: user?.accountHolderName || "",
+  jazzcashOrEasypaisaNumber: user?.jazzcashOrEasypaisaNumber || "",
 });
+
+// Payment: ya poora bank account, ya wallet number, ya dono
+function getPaymentError(f) {
+  const bankFields = [f.bankName, f.accountNumber, f.accountHolderName].map((v) =>
+    String(v).trim()
+  );
+  const filled = bankFields.filter(Boolean).length;
+  const wallet = String(f.jazzcashOrEasypaisaNumber).trim();
+
+  if (filled === 0 && !wallet) {
+    return "Add a bank account or a JazzCash / Easypaisa number.";
+  }
+  if (filled > 0 && filled < 3) {
+    return "Fill in all three bank fields: bank name, account holder name and account number.";
+  }
+  if (wallet && !WALLET_PATTERN.test(wallet)) {
+    return "Enter a valid JazzCash / Easypaisa number, like 03XXXXXXXXX.";
+  }
+  return "";
+}
 
 function getSubscriptionView(sub) {
   if (!sub || sub.plan === "none" || !sub.plan) {
@@ -100,7 +132,7 @@ function getSubscriptionView(sub) {
     sub.plan === "trial"
       ? "Free trial"
       : String(sub.plan).charAt(0).toUpperCase() +
-      String(sub.plan).slice(1);
+        String(sub.plan).slice(1);
 
   return {
     planLabel,
@@ -255,10 +287,11 @@ function FormMessage({ message }) {
   return (
     <div
       role={success ? "status" : "alert"}
-      className={`mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${success
+      className={`mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${
+        success
           ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
           : "border-rose-500/20 bg-rose-500/[0.07] text-rose-300"
-        }`}
+      }`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
 
@@ -303,10 +336,11 @@ function SubscriptionCard({ subscription }) {
           </div>
 
           <span
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${sub.active
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+              sub.active
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                 : "border-rose-500/20 bg-rose-500/10 text-rose-400"
-              }`}
+            }`}
           >
             {sub.statusLabel}
           </span>
@@ -355,7 +389,7 @@ function SubscriptionCard({ subscription }) {
 /* ------------------------------------------------------------------ */
 
 const ProfilePage = () => {
-  const { updateProfile } = useAuth();
+  const { updateProfile, updatePayment } = useAuth();
   const { handleLeaveTeam } = useInvitation();
 
   const { user, setUser, isLoading, mySubscription } = useContext(context);
@@ -373,6 +407,7 @@ const ProfilePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const blobUrlRef = useRef(null);
   const messageTimerRef = useRef(null);
@@ -399,10 +434,6 @@ const ProfilePage = () => {
       clearTimeout(copyTimerRef.current);
     };
   }, []);
-
-  const handleLeavesTeam = async () => {
-    await handleLeaveTeam();
-  }
 
   const clearPreviewUrl = () => {
     if (blobUrlRef.current) {
@@ -467,14 +498,21 @@ const ProfilePage = () => {
 
   /* Detect unsaved changes */
   const initial = fromUser(user);
+  const isWorker = user?.role === "worker";
 
-  const isDirty =
+  const profileDirty =
     form.name !== initial.name ||
     form.email !== initial.email ||
     form.phone !== initial.phone ||
     String(form.hourlyRate) !== String(initial.hourlyRate) ||
     form.password !== "" ||
     avatar !== null;
+
+  // Payment details sirf worker ke liye hain
+  const paymentDirty =
+    isWorker && PAYMENT_KEYS.some((key) => form[key] !== initial[key]);
+
+  const isDirty = profileDirty || paymentDirty;
 
   /* Discard changes */
   const handleDiscard = () => {
@@ -487,7 +525,7 @@ const ProfilePage = () => {
     setMessage(null);
   };
 
-  /* Save profile */
+  /* Save profile + payment details */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -503,19 +541,39 @@ const ProfilePage = () => {
       return;
     }
 
+    if (paymentDirty) {
+      const paymentError = getPaymentError(form);
+      if (paymentError) {
+        showMessage("error", paymentError);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setMessage(null);
 
     try {
-      await updateProfile(
-        userId,
-        form.name,
-        form.email,
-        form.phone,
-        form.hourlyRate,
-        form.password, // khali ho to updateProfile / backend ko ignore karna chahiye
-        avatar
-      );
+      if (profileDirty) {
+        await updateProfile(
+          userId,
+          form.name,
+          form.email,
+          form.phone,
+          form.hourlyRate,
+          form.password, // khali ho to updateProfile / backend ko ignore karna chahiye
+          avatar
+        );
+      }
+
+      if (paymentDirty) {
+        await updatePayment(
+          userId,
+          form.bankName.trim(),
+          form.accountNumber.trim(),
+          form.accountHolderName.trim(),
+          form.jazzcashOrEasypaisaNumber.trim()
+        );
+      }
 
       clearPreviewUrl();
 
@@ -527,14 +585,38 @@ const ProfilePage = () => {
       setAvatar(null);
       setShowPassword(false);
 
-      showMessage("success", "Your profile has been updated successfully.", true);
+      showMessage("success", "Your changes have been saved.", true);
     } catch (error) {
       showMessage(
         "error",
-        error.message || "Could not update your profile. Try again."
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not save your changes. Try again."
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /* Leave manager's team (pehle confirm) */
+  const handleLeaveTeamClick = async () => {
+    const confirmed = window.confirm(
+      "Leave your manager's team? You will lose access to team tasks until you join a team again."
+    );
+    if (!confirmed) return;
+
+    setIsLeaving(true);
+    try {
+      await handleLeaveTeam();
+    } catch (error) {
+      showMessage(
+        "error",
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not leave the team. Try again."
+      );
+    } finally {
+      setIsLeaving(false);
     }
   };
 
@@ -562,9 +644,9 @@ const ProfilePage = () => {
 
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    })
+        month: "long",
+        year: "numeric",
+      })
     : null;
 
   const strength = getPasswordStrength(form.password);
@@ -953,12 +1035,86 @@ const ProfilePage = () => {
               </div>
             </FormSection>
 
+            {/* Payment details (sirf worker ko dikhte hain) */}
+            {isWorker && (
+            <FormSection
+              icon={CreditCard}
+              title="Payment details"
+              subtitle="Add a bank account or a JazzCash / Easypaisa number for salary and payouts."
+              badge="03"
+            >
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  id="bank-name"
+                  name="bankName"
+                  label="Bank name"
+                  icon={CreditCard}
+                  value={form.bankName}
+                  onChange={handleChange}
+                  placeholder="e.g. Meezan Bank"
+                  autoComplete="off"
+                />
+
+                <Field
+                  id="account-holder-name"
+                  name="accountHolderName"
+                  label="Account holder name"
+                  icon={User}
+                  value={form.accountHolderName}
+                  onChange={handleChange}
+                  placeholder="Account holder full name"
+                  autoComplete="off"
+                />
+
+                <Field
+                  id="account-number"
+                  name="accountNumber"
+                  label="Bank account number"
+                  icon={CreditCard}
+                  value={form.accountNumber}
+                  onChange={handleChange}
+                  placeholder="Enter account number"
+                  autoComplete="off"
+                />
+
+                <Field
+                  id="wallet-number"
+                  name="jazzcashOrEasypaisaNumber"
+                  label="JazzCash / Easypaisa number"
+                  icon={Phone}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={form.jazzcashOrEasypaisaNumber}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      jazzcashOrEasypaisaNumber: e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11),
+                    }))
+                  }
+                  placeholder="03XXXXXXXXX"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="mt-4 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] p-4">
+                <p className="text-xs leading-relaxed text-sky-300">
+                  Managers can use these details to send salary, wages or
+                  task-based payments. Add a full bank account, a wallet
+                  number, or both.
+                </p>
+              </div>
+            </FormSection>
+            )}
+
             {/* Security */}
             <FormSection
               icon={Lock}
               title="Security settings"
               subtitle="Change your password to keep your account protected."
-              badge="03"
+              badge={isWorker ? "04" : "03"}
             >
               <div className="sm:max-w-md">
                 <Field
@@ -1015,10 +1171,11 @@ const ProfilePage = () => {
                       {[1, 2, 3, 4].map((i) => (
                         <span
                           key={i}
-                          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${i <= strength.score
+                          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                            i <= strength.score
                               ? strength.color
                               : "bg-slate-800"
-                            }`}
+                          }`}
                         />
                       ))}
                     </div>
@@ -1031,46 +1188,37 @@ const ProfilePage = () => {
                   </div>
                 )}
               </div>
-
-              {/* Leave Manager Team - UI Only */}
-              {user?.role === "worker" && user?.managerId && (
-                <div className="mt-5 relative overflow-hidden rounded-2xl border border-rose-500/20 bg-[#111827] p-5">
-                  {/* Background glow */}
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-500/[0.06] blur-3xl" />
-
-                  <div className="relative">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10">
-                        <Users className="h-5 w-5 text-rose-400" />
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-white">
-                          Team membership
-                        </h3>
-
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                          You are currently assigned to a manager's team.
-                          You can leave your current team whenever you need to.
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleLeavesTeam}
-                      className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 text-xs font-semibold text-rose-400 transition-all duration-200 hover:border-rose-500/50 hover:bg-rose-500/[0.15] hover:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827] active:scale-[0.98]"
-                    >
-                      <Users className="h-4 w-4" />
-                      Leave this manager's team
-                    </button>
-                  </div>
-                </div>
-              )}
-
             </FormSection>
 
+            {/* Team membership */}
+            {isWorker && user?.managerId && (
+              <FormSection
+                icon={Users}
+                title="Team membership"
+                subtitle="You are currently part of a manager's team."
+              >
+                <div className="flex flex-col gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    Leaving removes you from this team. You can join a team
+                    again from your invites.
+                  </p>
 
+                  <button
+                    type="button"
+                    onClick={handleLeaveTeamClick}
+                    disabled={isLeaving}
+                    className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isLeaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Users className="h-4 w-4" />
+                    )}
+                    {isLeaving ? "Leaving..." : "Leave this team"}
+                  </button>
+                </div>
+              </FormSection>
+            )}
 
             {/* Save changes bar */}
             <div className="sticky bottom-0 z-10 border-t border-slate-800 bg-[#111827]/95 p-4 backdrop-blur-xl sm:p-6">
@@ -1079,8 +1227,9 @@ const ProfilePage = () => {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5">
                   <span
-                    className={`relative flex h-2.5 w-2.5 shrink-0 rounded-full ${isDirty ? "bg-amber-400" : "bg-emerald-400"
-                      }`}
+                    className={`relative flex h-2.5 w-2.5 shrink-0 rounded-full ${
+                      isDirty ? "bg-amber-400" : "bg-emerald-400"
+                    }`}
                   >
                     {isDirty && (
                       <span className="absolute inset-0 animate-ping rounded-full bg-amber-400 opacity-40" />
