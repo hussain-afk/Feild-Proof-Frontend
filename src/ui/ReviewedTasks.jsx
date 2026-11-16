@@ -15,6 +15,7 @@ import {
   Wallet,
   Download,
   Loader2,
+  Landmark,
 } from "lucide-react";
 
 import { context } from "../context/context.jsx";
@@ -108,6 +109,16 @@ const buildPayslip = (item) => {
   const hours = Number(p.workingHours || 0);
   const total = Number(p.totalAmount || 0);
 
+  // Banking details: khali rows nahi dikhte, aur wallet number account number jaisa ho to dobara nahi
+  const paymentRows = [
+    { label: "Account holder", value: p.accountHolderName },
+    { label: "Bank / wallet", value: p.bankName },
+    { label: "Account number", value: p.accountNumber },
+    ...(p.jazzcashOrEasypaisa && p.jazzcashOrEasypaisa !== p.accountNumber
+      ? [{ label: "JazzCash / Easypaisa", value: p.jazzcashOrEasypaisa }]
+      : []),
+  ].filter((row) => row.value);
+
   return {
     paid,
     total,
@@ -154,6 +165,9 @@ const buildPayslip = (item) => {
             : []),
         ],
       },
+      ...(paymentRows.length
+        ? [{ title: "Payment account", icon: Landmark, rows: paymentRows }]
+        : []),
     ],
   };
 };
@@ -264,12 +278,13 @@ const downloadPayslipPdf = async (item) => {
     return cy + 4;
   };
 
-  const [taskInfo, breakdown, approver, record] = slip.sections;
+  const [taskInfo, breakdown, approver, record, payment] = slip.sections;
   const col1 = left;
   const col2 = left + colW + gap;
 
   const afterTask = drawSection(taskInfo, col1, cardY + 4);
-  drawSection(approver, col1, afterTask + 2);
+  const afterApprover = drawSection(approver, col1, afterTask + 2);
+  if (payment) drawSection(payment, col1, afterApprover + 2);
 
   const afterBreakdown = drawSection(breakdown, col2, cardY + 4);
   drawSection(record, col2, afterBreakdown + 2);
