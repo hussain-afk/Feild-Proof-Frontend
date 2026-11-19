@@ -38,11 +38,12 @@ function Stat({ icon: Icon, label, value, tone }) {
 }
 
 function PlanBanner() {
-  const { user, mySubscription, isLoading } = useContext(context);
+  const { user, isLoading } = useContext(context);
   const [now] = useState(() => Date.now());
   const [dismissed, setDismissed] = useState(false);
 
   if (!user || user.role !== "manager") return null;
+  const mySubscription = user.subscription || null;
   if (!mySubscription) return null;
 
   const {

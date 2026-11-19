@@ -453,7 +453,7 @@ function AllPlans() {
 
     if (success === "1") {
       paymentHandled.current = true;
-      toast.success("Payment successful. Updating your plan...");
+      toast.success("Payment successful. Updating your plan please wait...");
 
       const sessionId = searchParams.get("session_id");
 
