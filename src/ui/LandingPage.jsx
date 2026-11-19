@@ -27,6 +27,7 @@ import {
   KeyRound,
   Download,
   Monitor,
+  BookOpen,
 } from "lucide-react";
 
 /**
@@ -560,6 +561,13 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
+          <Link
+            to="/docs"
+            className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#e8eef7] transition-colors hover:bg-white/5"
+          >
+            <BookOpen className="h-4 w-4" />
+            Documentation
+          </Link>
           <DownloadDesktopLink className="inline-flex items-center gap-1.5 rounded-xl border border-[#1d2b45] px-3.5 py-2.5 text-sm font-medium text-[#e8eef7] transition-colors hover:border-[#2a3b5a] hover:bg-white/5">
             <Download className="h-4 w-4" />
             Desktop
@@ -605,6 +613,14 @@ function Header({ menuOpen, setMenuOpen, scrolled, activeNav }) {
             ))}
           </nav>
           <div className="mt-4 grid grid-cols-1 gap-3">
+            <Link
+              to="/docs"
+              onClick={close}
+              className="flex items-center justify-center gap-2 rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium"
+            >
+              <BookOpen className="h-4 w-4" />
+              Documentation
+            </Link>
             <DownloadDesktopLink className="flex items-center justify-center gap-2 rounded-xl border border-[#1d2b45] py-2.5 text-center text-sm font-medium">
               <Download className="h-4 w-4" />
               Download for Windows

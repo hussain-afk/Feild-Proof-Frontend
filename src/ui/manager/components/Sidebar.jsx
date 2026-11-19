@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Lock,
   CreditCard,
+  BookOpen,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -32,10 +33,8 @@ function UserAvatar({
   showStatus = false,
 }) {
   const initial = user?.name?.charAt(0)?.toUpperCase() || "M";
-  // console.log(subscription, "UserAvatar subscription:"); // Debugging line
 
   const plan = subscription?.plan?.toLowerCase();
-  // console.log("UserAvatar plan:", plan); // Debugging line
 
   const isPro = plan === "pro";
   const isBasicOrEnterprise = ["basic", "enterprise"].includes(plan);
@@ -179,6 +178,13 @@ function ManagerSidebar() {
           icon: UserCircle,
           end: false,
         },
+        {
+          id: "docs",
+          label: "Documentation",
+          path: "/manager/docs",
+          icon: BookOpen,
+          end: false,
+        },
       ],
     },
   ];
@@ -274,12 +280,14 @@ function ManagerSidebar() {
           </button>
         </div>
 
-        {/* Nav */}
-        <nav
-          className={`min-h-0 flex-1 px-3 py-5 [scrollbar-width:thin] [scrollbar-color:#1e293b_transparent] ${
-            showLabels ? "overflow-y-auto" : "overflow-visible"
-          }`}
-        >
+        {/* Nav
+            FIX: pehle "showLabels" ke hisaab se overflow-y "auto" ya "visible" rakha tha
+            (taake collapsed mode me tooltip bahar dikhe). Lekin isi wajah se agar links
+            zyada ho jaein to collapsed sidebar scroll hi nahi hoti thi, aur neeche wale
+            icons footer ke peeche chhup jate the.
+            Ab nav HAMESHA scroll hoti hai, chahe collapsed ho ya khuli, is liye kitne bhi
+            links hon, list hamesha theek dikhegi. */}
+        <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 [scrollbar-width:thin] [scrollbar-color:#1e293b_transparent]">
           <div className="space-y-5">
             {sections.map((section, sectionIndex) => (
               <div key={section.title}>
@@ -301,8 +309,16 @@ function ManagerSidebar() {
                     if (item.locked) {
                       return (
                         <li key={item.id}>
+                          {/* FIX: custom absolute tooltip hata diya (wahi overflow
+                              tod raha tha). Native "title" attribute use kiya hai,
+                              jo kisi bhi overflow/scroll se tuta nahi, chahe
+                              sidebar collapsed ho ya scroll ho rahi ho. */}
                           <div
-                            title="Upgrade to Pro or Enterprise"
+                            title={
+                              showLabels
+                                ? "Upgrade to Pro or Enterprise"
+                                : `${item.label} · Pro only`
+                            }
                             className={`group relative flex h-11 cursor-not-allowed items-center gap-3 rounded-xl text-[13px] font-medium text-slate-500 opacity-70 ${
                               showLabels ? "px-2.5" : "justify-center px-0"
                             }`}
@@ -324,14 +340,6 @@ function ManagerSidebar() {
                                 )}
                               </>
                             )}
-                            {!showLabels && (
-                              <span
-                                role="tooltip"
-                                className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-black/40 transition-opacity group-hover:opacity-100"
-                              >
-                                Chat · Pro only
-                              </span>
-                            )}
                           </div>
                         </li>
                       );
@@ -344,6 +352,7 @@ function ManagerSidebar() {
                           to={item.path}
                           end={item.end}
                           onClick={() => setIsMobileOpen(false)}
+                          title={showLabels ? undefined : item.label}
                           className={({ isActive }) =>
                             `group relative flex h-11 items-center gap-3 rounded-xl text-[13px] font-medium transition-colors ${focusRing} ${
                               showLabels ? "px-2.5" : "justify-center px-0"
@@ -370,14 +379,6 @@ function ManagerSidebar() {
                               </span>
                               {showLabels && (
                                 <span className="min-w-0 flex-1 truncate">
-                                  {item.label}
-                                </span>
-                              )}
-                              {!showLabels && (
-                                <span
-                                  role="tooltip"
-                                  className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-black/40 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                                >
                                   {item.label}
                                 </span>
                               )}
@@ -430,7 +431,7 @@ function ManagerSidebar() {
                 title="View profile"
                 className={`rounded-full ${focusRing}`}
               >
-                <UserAvatar user={user} subscription = {mySubscription} showStatus className="h-10 w-10" />
+                <UserAvatar user={user} subscription={mySubscription} showStatus className="h-10 w-10" />
               </NavLink>
               <button
                 type="button"

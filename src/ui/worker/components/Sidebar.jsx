@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   X,
   MessageCircle,
+  BookOpen,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -80,6 +81,7 @@ function WorkerSidebar() {
         title: "Account",
         items: [
           { id: "profile", label: "Profile", path: `/worker/me/${user?._id}`, icon: UserCircle, end: false, needsTeam: false },
+          { id: "docs", label: "Documentation", path: "/worker/docs", icon: BookOpen, end: false, needsTeam: false },
         ],
       },
     ],

@@ -99,6 +99,10 @@ const WorkerPendingInvitesPage = lazyWithRetry(() =>
   import("../ui/worker/pages/MyInvitesPage.jsx")
 );
 
+const DocsPage = lazyWithRetry(() =>
+  import("../ui/docs/Docs.jsx")
+);
+
 /* -------------------- PAGE SUSPENSE -------------------- */
 
 const Page = ({ children }) => (
@@ -259,6 +263,15 @@ const Routing = () => {
         }
       />
 
+      <Route
+        path="/docs"
+        element={
+          <Page>
+            <DocsPage />
+          </Page>
+        }
+      />
+
       {/* BANNED */}
 
       <Route
@@ -350,6 +363,15 @@ const Routing = () => {
           }
         />
 
+        <Route
+          path="docs"
+          element={
+            <Page>
+              <DocsPage />
+            </Page>
+          }
+        />
+
         <Route element={<RequireWorkerTeam user={user} />}>
           <Route
             index
@@ -428,6 +450,15 @@ const Routing = () => {
           element={
             <Page>
               <ManagerChatPage />
+            </Page>
+          }
+        />
+
+        <Route
+          path="docs"
+          element={
+            <Page>
+              <DocsPage />
             </Page>
           }
         />
@@ -516,6 +547,15 @@ const Routing = () => {
           element={
             <Page>
               <AddPlanPage />
+            </Page>
+          }
+        />
+
+        <Route
+          path="docs"
+          element={
+            <Page>
+              <DocsPage />
             </Page>
           }
         />
