@@ -16,6 +16,7 @@ import {
   Download,
   Loader2,
   Landmark,
+  CreditCard,
 } from "lucide-react";
 
 import { context } from "../context/context.jsx";
@@ -66,18 +67,18 @@ const isValidDate = (date) => date && !Number.isNaN(new Date(date).getTime());
 const formatDate = (date) =>
   isValidDate(date)
     ? new Date(date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "N/A";
 
 const formatTime = (date) =>
   isValidDate(date)
     ? new Date(date).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+      hour: "2-digit",
+      minute: "2-digit",
+    })
     : "";
 
 const formatStamp = (date) =>
@@ -323,15 +324,27 @@ const runDownload = async (item) => {
 /* Small Components                                                    */
 /* ------------------------------------------------------------------ */
 
+function PayButton({ onClick, className = "" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-500 active:scale-95 ${className}`}
+    >
+      <CreditCard className="h-4 w-4" />
+      Pay
+    </button>
+  );
+}
+
 function MessageText({ text, open, onToggle }) {
   const isLong = text.length > LONG_MESSAGE;
 
   return (
     <div className="min-w-0">
       <p
-        className={`break-words text-sm leading-relaxed text-slate-300 ${
-          open || !isLong ? "" : "line-clamp-2"
-        }`}
+        className={`break-words text-sm leading-relaxed text-slate-300 ${open || !isLong ? "" : "line-clamp-2"
+          }`}
       >
         {text}
       </p>
@@ -369,9 +382,8 @@ function DetailRow({ label, value, strong }) {
     <div className="flex items-start justify-between gap-4 py-2.5">
       <span className="shrink-0 text-sm text-slate-500">{label}</span>
       <span
-        className={`min-w-0 break-words text-right text-sm ${
-          strong ? "font-bold text-sky-400" : "font-medium text-slate-200"
-        }`}
+        className={`min-w-0 break-words text-right text-sm ${strong ? "font-bold text-sky-400" : "font-medium text-slate-200"
+          }`}
       >
         {value || "N/A"}
       </span>
@@ -474,11 +486,10 @@ function PayslipModal({ item, onClose }) {
             </p>
 
             <span
-              className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                slip.paid
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                  : "border-amber-500/20 bg-amber-500/10 text-amber-400"
-              }`}
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${slip.paid
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                : "border-amber-500/20 bg-amber-500/10 text-amber-400"
+                }`}
             >
               {slip.paid ? (
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -537,19 +548,21 @@ function PayslipModal({ item, onClose }) {
             >
               Close
             </button>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-medium text-white transition hover:bg-sky-500 disabled:opacity-60 sm:flex-none ${focusRing}`}
-            >
-              {downloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Download PDF
-            </button>
+            {slip.paid && (
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={downloading}
+                className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-medium text-white transition hover:bg-sky-500 disabled:opacity-60 sm:flex-none ${focusRing}`}
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Download PDF
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -561,12 +574,14 @@ function PayslipModal({ item, onClose }) {
 /* Mobile Card                                                         */
 /* ------------------------------------------------------------------ */
 
-function ReviewCard({ item, openId, toggleMessage, onViewPayslip }) {
+function ReviewCard({ item, openId, toggleMessage, onViewPayslip, isManager }) {
   const kind = KINDS[item.kind];
   const person = item[kind.person];
   const id = rowId(item);
   const open = openId === id;
   const hasPayslip = item.kind === "approved" && item.payslip;
+  const canDownloadPayslip = hasPayslip && item.payslip?.status === "paid";
+
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-800 bg-[#0c1220]">
@@ -628,7 +643,12 @@ function ReviewCard({ item, openId, toggleMessage, onViewPayslip }) {
                 {formatMoney(item.payslip.totalAmount)}
               </span>
             </button>
-            <DownloadIconButton item={item} />
+            {canDownloadPayslip && (
+              <DownloadIconButton item={item} />
+            )}
+            {isManager && (
+              <PayButton />
+            )}
           </>
         ) : (
           <p className="w-full text-center text-xs text-slate-600">
@@ -645,7 +665,7 @@ function ReviewCard({ item, openId, toggleMessage, onViewPayslip }) {
 /* ------------------------------------------------------------------ */
 
 function ReviewedTasks() {
-  const { myApprovedTasks, myRejectedTasks, isLoading } = useContext(context);
+  const { myApprovedTasks, myRejectedTasks, isLoading, user } = useContext(context);
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -657,6 +677,7 @@ function ReviewedTasks() {
   const approved = Array.isArray(myApprovedTasks) ? myApprovedTasks : [];
   const rejected = Array.isArray(myRejectedTasks) ? myRejectedTasks : [];
 
+  const isManager = user?.role === "manager";
   const all = [
     ...approved.map((item) => ({ ...item, kind: "approved" })),
     ...rejected.map((item) => ({ ...item, kind: "rejected" })),
@@ -675,9 +696,8 @@ function ReviewedTasks() {
       if (filter !== "all" && item.kind !== filter) return false;
 
       const person = item[KINDS[item.kind].person];
-      const searchable = `${item.task?.title || ""} ${person?.name || ""} ${
-        person?.email || ""
-      } ${item.message || ""}`;
+      const searchable = `${item.task?.title || ""} ${person?.name || ""} ${person?.email || ""
+        } ${item.message || ""}`;
 
       return searchable.toLowerCase().includes(text);
     })
@@ -725,17 +745,15 @@ function ReviewedTasks() {
                 type="button"
                 onClick={() => changeFilter(id)}
                 aria-pressed={active}
-                className={`min-w-0 rounded-2xl border p-3 text-left transition sm:p-4 ${focusRing} ${
-                  active
-                    ? "border-sky-500/40 bg-sky-500/[0.07]"
-                    : "border-slate-800 bg-[#0c1220] hover:border-slate-700"
-                }`}
+                className={`min-w-0 rounded-2xl border p-3 text-left transition sm:p-4 ${focusRing} ${active
+                  ? "border-sky-500/40 bg-sky-500/[0.07]"
+                  : "border-slate-800 bg-[#0c1220] hover:border-slate-700"
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <Icon
-                    className={`h-4 w-4 shrink-0 ${
-                      active ? "text-sky-400" : "text-slate-500"
-                    }`}
+                    className={`h-4 w-4 shrink-0 ${active ? "text-sky-400" : "text-slate-500"
+                      }`}
                   />
                   <span className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">
                     {label}
@@ -827,6 +845,7 @@ function ReviewedTasks() {
                   openId={openId}
                   toggleMessage={toggleMessage}
                   onViewPayslip={setSelectedPayslip}
+                  isManager={isManager}
                 />
               ))}
             </div>
@@ -852,6 +871,7 @@ function ReviewedTasks() {
                       const person = item[kind.person];
                       const id = rowId(item);
                       const hasPayslip = item.kind === "approved" && item.payslip;
+                      const canDownloadPayslip = hasPayslip && item.payslip?.status === "paid";
 
                       return (
                         <tr
@@ -906,7 +926,12 @@ function ReviewedTasks() {
                                   <Receipt className="h-3.5 w-3.5" />
                                   View
                                 </button>
-                                <DownloadIconButton item={item} />
+                                {canDownloadPayslip && (
+                                  <DownloadIconButton item={item} />
+                                )}
+                                {isManager && (
+                                  <PayButton className="h-9" />
+                                )}
                               </div>
                             ) : (
                               <span className="text-xs text-slate-600">N/A</span>

@@ -15,6 +15,7 @@ import {
   X,
   MessageCircle,
   Lock,
+  CreditCard,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -24,23 +25,67 @@ import { canUseChatPlan } from "../../../utils/PlanAccess.jsx";
 const focusRing =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60";
 
-function UserAvatar({ user, className = "", showStatus = false }) {
-  const initial = user?.name ? user.name.charAt(0).toUpperCase() : "M";
+function UserAvatar({
+  user,
+  subscription,
+  className = "",
+  showStatus = false,
+}) {
+  const initial = user?.name?.charAt(0)?.toUpperCase() || "M";
+  // console.log(subscription, "UserAvatar subscription:"); // Debugging line
+
+  const plan = subscription?.plan?.toLowerCase();
+  // console.log("UserAvatar plan:", plan); // Debugging line
+
+  const isPro = plan === "pro";
+  const isBasicOrEnterprise = ["basic", "enterprise"].includes(plan);
+
+  const hasPremiumRing = isPro || isBasicOrEnterprise;
+
+  const ringStyle = isPro
+    ? "bg-gradient-to-tr from-blue-500 via-purple-500 via-pink-500 to-red-500 shadow-[0_0_15px_rgba(139,92,246,0.35)] hover:shadow-[0_0_22px_rgba(168,85,247,0.5)]"
+    : isBasicOrEnterprise
+      ? "bg-gradient-to-tr from-blue-400 via-sky-500 to-cyan-400 shadow-[0_0_12px_rgba(59,130,246,0.3)] hover:shadow-[0_0_18px_rgba(59,130,246,0.5)]"
+      : "";
+
   return (
-    <div className={`relative shrink-0 ${className}`}>
-      <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-sky-600 text-sm font-semibold text-white ring-2 ring-slate-800">
+    <div
+      className={`relative isolate shrink-0 ${
+        hasPremiumRing
+          ? `rounded-full ${ringStyle} p-[5px] transition-all duration-300`
+          : ""
+      } ${className}`}
+    >
+      <div
+        className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#111827] text-sm font-semibold text-white ${
+          hasPremiumRing ? "ring-2 ring-[#0c1220]" : ""
+        }`}
+      >
         {user?.avatar ? (
           <img
             src={user.avatar}
             alt={user?.name ? `${user.name} avatar` : "User avatar"}
-            className="h-full w-full object-cover"
+            className="h-full w-full rounded-full object-cover transition-transform duration-500 hover:scale-110"
           />
         ) : (
-          <span>{initial}</span>
+          <span
+            className={
+              isPro
+                ? "bg-gradient-to-br from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent"
+                : isBasicOrEnterprise
+                  ? "bg-gradient-to-br from-blue-300 to-cyan-300 bg-clip-text text-transparent"
+                  : ""
+            }
+          >
+            {initial}
+          </span>
         )}
       </div>
+
       {showStatus && (
-        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#0c1220] bg-emerald-400" />
+        <span className="absolute bottom-0 right-0 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border-[2.5px] border-[#0c1220] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]">
+          <span className="h-1 w-1 rounded-full bg-white" />
+        </span>
       )}
     </div>
   );
@@ -68,21 +113,21 @@ function ManagerSidebar() {
       items: [
         {
           id: "tasks",
-          label: "Field tasks",
+          label: "Home",
           path: "/manager",
           icon: ListTodo,
           end: true,
         },
         {
           id: "verification",
-          label: "Verification",
+          label: "Verification & Approval",
           path: "/manager/verification",
           icon: BadgeCheck,
           end: false,
         },
         {
           id: "reviewed",
-          label: "Reviewed",
+          label: "Review & Payment",
           path: "/manager/reviewed",
           icon: ClipboardCheck,
           end: false,
@@ -120,6 +165,13 @@ function ManagerSidebar() {
     {
       title: "Account",
       items: [
+        {
+          id: "All Plans",
+          label: "All Plans",
+          path: "/manager/plans",
+          icon: CreditCard,
+          end: false,
+        },
         {
           id: "profile",
           label: "Profile",
@@ -351,7 +403,7 @@ function ManagerSidebar() {
                 title="View profile"
                 className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 transition hover:bg-white/[0.05] ${focusRing}`}
               >
-                <UserAvatar user={user} showStatus className="h-10 w-10" />
+                <UserAvatar user={user} subscription={mySubscription} showStatus className="h-10 w-10" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-white">
                     {user?.name || "Manager"}
@@ -378,7 +430,7 @@ function ManagerSidebar() {
                 title="View profile"
                 className={`rounded-full ${focusRing}`}
               >
-                <UserAvatar user={user} showStatus className="h-10 w-10" />
+                <UserAvatar user={user} subscription = {mySubscription} showStatus className="h-10 w-10" />
               </NavLink>
               <button
                 type="button"

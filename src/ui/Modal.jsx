@@ -8,7 +8,7 @@ const Modal = ({
   title,
   subtitle,
   children,
-  maxWidth = "w-full",
+  maxWidth = "max-w-3xl",
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -31,7 +31,7 @@ const Modal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto p-3 sm:p-6">
 
       {/* BACKDROP */}
       <div
@@ -45,7 +45,7 @@ const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
-        className={`modal-panel relative flex h-[100dvh] w-full ${maxWidth} flex-col overflow-hidden border border-white/[0.06] bg-[#080e19] shadow-2xl shadow-black/50`}
+        className={`modal-panel relative flex max-h-[90dvh] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-[#080e19] shadow-2xl shadow-black/50`}
       >
 
         {/* TOP ACCENT */}
@@ -101,7 +101,7 @@ const Modal = ({
           <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[70%] -translate-x-1/2 rounded-full bg-cyan-500/[0.025] blur-3xl" />
 
           {/* CONTENT */}
-          <div className="relative min-h-full px-4 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-8">
+          <div className="relative min-h-0 px-4 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-8">
             {children}
           </div>
         </main>
@@ -112,8 +112,12 @@ const Modal = ({
 
       <style>{`
         @keyframes modalBackdropIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
 
         @keyframes modalPanelIn {

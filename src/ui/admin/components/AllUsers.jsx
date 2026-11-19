@@ -11,6 +11,7 @@ import {
   Phone,
   DollarSign,
   CalendarDays,
+  ShieldCheck,
 } from "lucide-react";
 import { context } from "../../../context/context.jsx";
 import Modal from "../../Modal.jsx";
@@ -87,21 +88,35 @@ const matchesFilter = (user, filter) => {
 /* ------------------------------------------------------------------ */
 
 function Avatar({ user, size = "h-10 w-10" }) {
-  if (user.avatar) {
-    return (
-      <img
-        src={user.avatar}
-        alt={user.name}
-        className={`${size} shrink-0 rounded-full border border-slate-700/80 object-cover`}
-      />
-    );
-  }
+  const plan = user?.subscription?.plan?.toLowerCase();
+
+  const isPro = plan === "pro";
+  const isBasicOrEnterprise = ["basic", "enterprise"].includes(plan);
+  const hasPremiumRing = isPro || isBasicOrEnterprise;
+
+  const ringStyle = isPro
+    ? "bg-[linear-gradient(135deg,#3b82f6_0%,#8b5cf6_35%,#ec4899_70%,#ef4444_100%)]"
+    : "bg-gradient-to-tr from-blue-400 via-sky-500 to-cyan-400";
 
   return (
     <div
-      className={`${size} flex shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-300`}
+      className={`${size} relative shrink-0 ${
+        hasPremiumRing ? `rounded-full ${ringStyle} p-[3px]` : ""
+      }`}
     >
-      {getInitials(user.name)}
+      <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#111827]">
+        {user?.avatar ? (
+          <img
+            src={user.avatar}
+            alt={user.name || "User"}
+            className="block h-full w-full rounded-full object-cover"
+          />
+        ) : (
+          <span className="text-xs font-semibold text-sky-300">
+            {getInitials(user?.name)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -140,6 +155,15 @@ function UserBadges({ user }) {
         >
           <Ban className="h-3.5 w-3.5" />
           Banned
+        </span>
+      )}
+
+      {user.subscription?.plan && (
+        <span
+          className={`${badgeClass} border-sky-500/25 bg-sky-500/10 text-sky-300`}
+        >
+          <ShieldCheck className="h-3.5 w-3.5" />
+          {user.subscription.plan}
         </span>
       )}
     </>
@@ -237,6 +261,7 @@ const AllUsers = () => {
     isLoading,
     user: currentUser,
   } = useContext(context);
+  console.log("AllUsers allUsers:", allUsers); // Debugging line
   const { updateUserProfileByAdmin, handleBanUser } = useAdmin();
   const { deleteUser } = useAuth();
 
