@@ -12,7 +12,6 @@ import {
   Menu,
   ShieldCheck,
   X,
-  BookOpen,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -78,7 +77,6 @@ function AdminSidebar() {
         { id: "maintenance", label: "Maintenance", path: "/admin/maintenance", icon: Wrench, end: false },
         { id: "add-plan", label: "Add Plan", path: "/admin/add-plan", icon: UserPlus, end: false },
         { id: "profile", label: "Profile", path: `/admin/me/${user?._id}`, icon: UserCircle, end: false },
-        { id: "docs", label: "Documentation", path: "/admin/docs", icon: BookOpen, end: false },
       ],
     },
   ];

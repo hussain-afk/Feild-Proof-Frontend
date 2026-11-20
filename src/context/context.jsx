@@ -1,4 +1,3 @@
-
 import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -101,7 +100,6 @@ const ContextProvider = ({ children }) => {
   const refreshRef = useRef(null);
   const syncRef = useRef(null);
 
-  // Notification sound refs
   const notificationAudio = useRef(null);
   const soundEnabled = useRef(false);
   const playedNotifications = useRef(new Set());
@@ -114,7 +112,6 @@ const ContextProvider = ({ children }) => {
     roleRef.current = role || null;
   }, [role]);
 
-  // ----- notification sound setup -----
   useEffect(() => {
     notificationAudio.current = new Audio("/notification.mp3");
     notificationAudio.current.volume = 0.5;
@@ -128,10 +125,8 @@ const ContextProvider = ({ children }) => {
     };
   }, []);
 
-  // ----- enable notification sound -----
   const enableNotificationSound = useCallback(async () => {
     const audio = notificationAudio.current;
-    // console.log("Enabling notification sound...");
 
     if (!audio) return;
 
@@ -145,14 +140,12 @@ const ContextProvider = ({ children }) => {
       soundEnabled.current = true;
 
       toast.success("Notification sound enabled!");
-    } catch (error) {
+    } catch {
       soundEnabled.current = false;
-      console.error("Notification sound error:", error);
       toast.error("Please try enabling sound again.");
     }
   }, []);
 
-  // ----- play notification sound -----
   const playNotificationSound = useCallback((notification) => {
     const audio = notificationAudio.current;
 
@@ -160,13 +153,11 @@ const ContextProvider = ({ children }) => {
 
     const id = getId(notification);
 
-    // Prevent duplicate sound for the same notification
     if (id && playedNotifications.current.has(String(id))) return;
 
     if (id) {
       playedNotifications.current.add(String(id));
 
-      // Keep the duplicate-check list limited
       if (playedNotifications.current.size > 100) {
         const firstId = playedNotifications.current.values().next().value;
         playedNotifications.current.delete(firstId);
@@ -174,13 +165,9 @@ const ContextProvider = ({ children }) => {
     }
 
     audio.currentTime = 0;
-
-    audio.play().catch((error) => {
-      console.error("Unable to play notification sound:", error);
-    });
+    audio.play().catch(() => {});
   }, []);
 
-  // ----- reviewed tasks -----
   const fetchReviewedTasks = useCallback(async () => {
     const [a, r] = await Promise.allSettled([
       getMyApprovedTasks(),
@@ -196,7 +183,6 @@ const ContextProvider = ({ children }) => {
     }
   }, []);
 
-  // ----- role data -----
   const fetchRoleData = useCallback(
     async (userRole, options = {}) => {
       if (!userRole) return;
@@ -206,7 +192,6 @@ const ContextProvider = ({ children }) => {
       }
 
       try {
-        // MANAGER
         if (userRole === "manager") {
           const res = await Promise.allSettled([
             getAllTasks(),
@@ -229,10 +214,6 @@ const ContextProvider = ({ children }) => {
 
           if (subscriptionResult) {
             setMySubscription(subscriptionResult);
-          } else {
-            console.warn(
-              "Subscription API failed or returned empty data. Keeping existing subscription."
-            );
           }
 
           setAllPlans(ok(res[6]) || []);
@@ -241,7 +222,6 @@ const ContextProvider = ({ children }) => {
           await fetchReviewedTasks();
         }
 
-        // WORKER
         if (userRole === "worker") {
           const res = await Promise.allSettled([
             getMyTasks(),
@@ -256,7 +236,6 @@ const ContextProvider = ({ children }) => {
           await fetchReviewedTasks();
         }
 
-        // ADMIN
         if (userRole === "admin") {
           const res = await Promise.allSettled([
             getAdminInfos(),
@@ -270,8 +249,8 @@ const ContextProvider = ({ children }) => {
         }
 
         lastFetch.current = Date.now();
-      } catch (err) {
-        console.error("fetchRoleData:", err);
+      } catch {
+        // silent
       } finally {
         if (options.showLoader) {
           setIsLoading(false);
@@ -281,7 +260,6 @@ const ContextProvider = ({ children }) => {
     [fetchReviewedTasks]
   );
 
-  // ----- sync user -----
   const syncUser = useCallback(
     async (partial) => {
       try {
@@ -300,14 +278,13 @@ const ContextProvider = ({ children }) => {
           roleRef.current = newRole;
           await fetchRoleData(newRole);
         }
-      } catch (err) {
-        console.error("syncUser:", err);
+      } catch {
+        // silent
       }
     },
     [fetchRoleData]
   );
 
-  // ----- refresh -----
   const refresh = useCallback(async (options = {}) => {
     if (!roleRef.current || busy.current) return;
 
@@ -321,8 +298,8 @@ const ContextProvider = ({ children }) => {
         fetchRoleData(roleRef.current),
         syncUser(),
       ]);
-    } catch (err) {
-      console.error("refresh:", err);
+    } catch {
+      // silent
     } finally {
       busy.current = false;
       setIsRefreshing(false);
@@ -337,7 +314,6 @@ const ContextProvider = ({ children }) => {
     syncRef.current = syncUser;
   }, [syncUser]);
 
-  // ----- task helpers -----
   const addTask = useCallback((task) => {
     if (task && getId(task)) {
       setAllTasks((old) => addIfNew(old, task));
@@ -351,7 +327,6 @@ const ContextProvider = ({ children }) => {
     setMyTasks(drop);
   }, []);
 
-  // ----- first load -----
   useEffect(() => {
     let stop = false;
 
@@ -391,8 +366,8 @@ const ContextProvider = ({ children }) => {
         ) {
           navRef.current(HOME[current.role]);
         }
-      } catch (err) {
-        console.error("loadData:", err);
+      } catch {
+        // silent
       } finally {
         if (!stop) {
           setIsLoading(false);
@@ -405,7 +380,6 @@ const ContextProvider = ({ children }) => {
     };
   }, [fetchRoleData]);
 
-  // ----- logout clear -----
   useEffect(() => {
     if (prevUserId.current && !userId) {
       busy.current = false;
@@ -434,7 +408,6 @@ const ContextProvider = ({ children }) => {
     prevUserId.current = userId || null;
   }, [userId]);
 
-  // ----- tab focus + fallback polling -----
   useEffect(() => {
     if (!userId) return;
 
@@ -463,13 +436,10 @@ const ContextProvider = ({ children }) => {
     };
   }, [userId]);
 
-  // ----- socket connect -----
   useEffect(() => {
     if (!userId) return;
 
     const onConnect = () => {
-      console.log("Socket connected:", socket.id);
-
       socket.emit("join_room", userId);
 
       if (Date.now() - lastFetch.current > REFRESH_GAP) {
@@ -477,9 +447,7 @@ const ContextProvider = ({ children }) => {
       }
     };
 
-    const onConnectError = (error) => {
-      console.error("Socket connection error:", error.message);
-    };
+    const onConnectError = () => {};
 
     socket.on("connect", onConnect);
     socket.on("connect_error", onConnectError);
@@ -497,7 +465,6 @@ const ContextProvider = ({ children }) => {
     };
   }, [userId]);
 
-  // ----- socket events -----
   useEffect(() => {
     if (!userId) return;
 
@@ -587,7 +554,6 @@ const ContextProvider = ({ children }) => {
       syncRef.current?.(data.user);
     };
 
-    // Debounce helper
     const debounced = (fn) => {
       let t;
 
@@ -606,16 +572,16 @@ const ContextProvider = ({ children }) => {
         setVerificationStatus(
           (await getVerificationStatusAPI()) || []
         );
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
     const reloadWorkers = debounced(async () => {
       try {
         setMyWorkers((await getMyWorkers()) || []);
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
@@ -624,8 +590,8 @@ const ContextProvider = ({ children }) => {
         setAvailableWorkers(
           (await getAvailableWorkers()) || []
         );
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
@@ -634,8 +600,8 @@ const ContextProvider = ({ children }) => {
         setMyInvitations(
           (await getWorkerInvitations()) || []
         );
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
@@ -644,8 +610,8 @@ const ContextProvider = ({ children }) => {
         setManagerInvitations(
           (await getManagerInvitations()) || []
         );
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
@@ -658,17 +624,13 @@ const ContextProvider = ({ children }) => {
 
         setAdminInfos(infos || []);
         setManagerRequests(pendingOnly(requests));
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // silent
       }
     });
 
-    // ----- REALTIME SUBSCRIPTION UPDATE -----
     const handleSubscriptionUpdate = (data) => {
-      console.log("REALTIME SUBSCRIPTION EVENT:", data);
-
       if (!data) return;
-
       setMySubscription(data);
     };
 
@@ -697,7 +659,6 @@ const ContextProvider = ({ children }) => {
       socket.on("available_workers_updated", reloadAvailable);
       socket.on("manager_invites_updated", reloadManagerInvites);
       socket.on("invite_updated", reloadManagerInvites);
-
       socket.on("subscription", handleSubscriptionUpdate);
     }
 
@@ -726,25 +687,17 @@ const ContextProvider = ({ children }) => {
       socket.off("user_updated", onUserUpdated);
       socket.off("task_created", onTaskCreated);
 
-      updates.forEach((e) =>
-        socket.off(e, onTaskUpdate)
-      );
-
-      deletes.forEach((e) =>
-        socket.off(e, onTaskDelete)
-      );
+      updates.forEach((e) => socket.off(e, onTaskUpdate));
+      deletes.forEach((e) => socket.off(e, onTaskDelete));
 
       socket.off("verification_updated", reloadVerifications);
       socket.off("my_workers_updated", reloadWorkers);
       socket.off("available_workers_updated", reloadAvailable);
       socket.off("manager_invites_updated", reloadManagerInvites);
       socket.off("invite_updated", reloadManagerInvites);
-
       socket.off("invite_received", reloadWorkerInvites);
-
       socket.off("admin_info_updated", reloadAdmin);
       socket.off("manager_requests_updated", reloadAdmin);
-
       socket.off("subscription", handleSubscriptionUpdate);
     };
   }, [userId, role, playNotificationSound]);
@@ -820,7 +773,6 @@ const ContextProvider = ({ children }) => {
           fetchRoleData,
           fetchReviewedTasks,
 
-          // Notification sound
           enableNotificationSound,
         }}
       >

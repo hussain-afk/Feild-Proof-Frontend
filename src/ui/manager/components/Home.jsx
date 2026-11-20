@@ -30,7 +30,6 @@ import {
   XCircle,
 } from "lucide-react";
 import PlanBanner from "../../PlanBanner.jsx";
-import NotificationDropdown from "../../NotificationDropdown.jsx";
 
 /* ------------------------------------------------------------------ */
 /* Constants and helpers                                                */
@@ -335,9 +334,9 @@ function Home() {
                 Create task
               </button>
 
-              <div className="shrink-0">
+              {/* <div className="shrink-0">
                 <NotificationDropdown />
-              </div>
+              </div> */}
             </div>
           </header>
           <PlanBanner />

@@ -363,15 +363,6 @@ const Routing = () => {
           }
         />
 
-        <Route
-          path="docs"
-          element={
-            <Page>
-              <DocsPage />
-            </Page>
-          }
-        />
-
         <Route element={<RequireWorkerTeam user={user} />}>
           <Route
             index
@@ -450,15 +441,6 @@ const Routing = () => {
           element={
             <Page>
               <ManagerChatPage />
-            </Page>
-          }
-        />
-
-        <Route
-          path="docs"
-          element={
-            <Page>
-              <DocsPage />
             </Page>
           }
         />
@@ -547,15 +529,6 @@ const Routing = () => {
           element={
             <Page>
               <AddPlanPage />
-            </Page>
-          }
-        />
-
-        <Route
-          path="docs"
-          element={
-            <Page>
-              <DocsPage />
             </Page>
           }
         />

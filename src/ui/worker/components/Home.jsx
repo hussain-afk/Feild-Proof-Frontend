@@ -5,7 +5,6 @@ import useVerification from "../../../hooks/useVerification";
 import useAuth from "../../../hooks/useAuth";
 
 import WorkerTaskCard from "./TaskCard";
-import NotificationDropdown from "../../NotificationDropdown.jsx";
 
 import {
   CheckCircle2,
@@ -295,7 +294,7 @@ function WorkerDashboard() {
             </div>
 
             {/* Reusable notifications component */}
-            <NotificationDropdown />
+            {/* <NotificationDropdown /> */}
           </header>
 
           {/* ================= SUMMARY ================= */}

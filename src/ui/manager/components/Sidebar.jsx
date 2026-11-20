@@ -16,7 +16,6 @@ import {
   MessageCircle,
   Lock,
   CreditCard,
-  BookOpen,
 } from "lucide-react";
 import useAuth from "../../../hooks/useAuth";
 import { context } from "../../../context/context.jsx";
@@ -176,13 +175,6 @@ function ManagerSidebar() {
           label: "Profile",
           path: `/manager/me/${user?._id}`,
           icon: UserCircle,
-          end: false,
-        },
-        {
-          id: "docs",
-          label: "Documentation",
-          path: "/manager/docs",
-          icon: BookOpen,
           end: false,
         },
       ],

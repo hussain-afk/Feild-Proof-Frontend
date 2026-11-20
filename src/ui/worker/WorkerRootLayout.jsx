@@ -1,31 +1,34 @@
-import { Outlet, useLocation } from "react-router-dom";
-import WorkerSidebar from './components/Sidebar'
-import { ChevronRight } from "lucide-react";
+import { Outlet, useLocation, NavLink } from "react-router-dom";
+import WorkerSidebar from "./components/Sidebar";
+import { BookOpen, ChevronRight } from "lucide-react";
+import NotificationDropdown from "../NotificationDropdown";
 
 const ROLE_LABEL = "Worker";
+const ROOT_PATH = "/worker";
 const ROOT_TITLE = "My tasks";
 
-// Ids in the URL (Mongo ids, numbers) should not show in the breadcrumb
-const looksLikeId = (part) => /^[a-f0-9]{12,}$/i.test(part) || /^\d+$/.test(part);
+const looksLikeId = (part) =>
+  /^[a-f0-9]{12,}$/i.test(part) || /^\d+$/.test(part);
 
 const prettify = (part) =>
   part === "me"
     ? "Profile"
     : part.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-// /admin/add-plan -> ["Add plan"], /admin -> ["Dashboard"]
 const getCrumbs = (pathname) => {
   const parts = pathname
     .split("/")
     .filter(Boolean)
     .slice(1)
     .filter((part) => !looksLikeId(part));
+
   return parts.length ? parts.map(prettify) : [ROOT_TITLE];
 };
 
 function TopBar() {
   const { pathname } = useLocation();
   const crumbs = getCrumbs(pathname);
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "short",
@@ -33,28 +36,68 @@ function TopBar() {
   });
 
   return (
-    <div className="sticky top-0 z-30 hidden h-14 shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#0b0f19]/85 px-8 backdrop-blur-md lg:flex">
-      <nav aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1.5 text-sm">
-          <li className="text-slate-500">{ROLE_LABEL}</li>
+    <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-800/80 bg-[#0b0f19]/90 px-3 backdrop-blur-md sm:px-5 lg:px-8">
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
+        <ol className="flex items-center gap-1.5 truncate text-xs sm:text-sm">
+          <li className="shrink-0">
+            <NavLink
+              to={ROOT_PATH}
+              className="text-slate-500 transition-colors hover:text-sky-400"
+            >
+              {ROLE_LABEL}
+            </NavLink>
+          </li>
+
           {crumbs.map((crumb, index) => {
             const isLast = index === crumbs.length - 1;
+            const parts = pathname.split("/").filter(Boolean);
+            const routeParts = parts.slice(0, index + 2);
+            const route = `/${routeParts.join("/")}`;
+
             return (
-              <li key={`${crumb}-${index}`} className="flex items-center gap-1.5">
-                <ChevronRight className="h-3.5 w-3.5 text-slate-700" />
-                <span
-                  aria-current={isLast ? "page" : undefined}
-                  className={isLast ? "font-medium text-white" : "text-slate-500"}
-                >
-                  {crumb}
-                </span>
+              <li
+                key={`${crumb}-${index}`}
+                className="flex min-w-0 items-center gap-1.5"
+              >
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-700" />
+                {isLast ? (
+                  <span
+                    aria-current="page"
+                    className="truncate font-medium text-white"
+                  >
+                    {crumb}
+                  </span>
+                ) : (
+                  <NavLink
+                    to={route}
+                    className="truncate text-slate-500 transition-colors hover:text-sky-400"
+                  >
+                    {crumb}
+                  </NavLink>
+                )}
               </li>
             );
           })}
         </ol>
       </nav>
 
-      <p className="text-xs text-slate-500">{today}</p>
+      {/* Right: date + docs + notifications */}
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <p className="hidden whitespace-nowrap text-xs text-slate-500 lg:block">
+          {today}
+        </p>
+
+        <NavLink
+          to="/docs"
+          className="group flex h-9 items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/50 px-2.5 text-xs font-medium text-slate-300 transition hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300 sm:px-3"
+        >
+          <BookOpen className="h-3.5 w-3.5 shrink-0 text-slate-400 transition group-hover:text-sky-400" />
+          <span className="hidden sm:inline">Docs</span>
+        </NavLink>
+
+        <NotificationDropdown />
+      </div>
     </div>
   );
 }
@@ -62,7 +105,6 @@ function TopBar() {
 function WorkerLayout() {
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#0b0f19] text-slate-100 lg:flex-row">
-      {/* Skip link for keyboard users */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-sky-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
@@ -70,10 +112,8 @@ function WorkerLayout() {
         Skip to content
       </a>
 
-      {/* Responsive Sidebar */}
       <WorkerSidebar />
 
-      {/* Main Content Area */}
       <main
         id="main-content"
         tabIndex={-1}
