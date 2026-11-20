@@ -165,7 +165,7 @@ const ContextProvider = ({ children }) => {
     }
 
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   }, []);
 
   const fetchReviewedTasks = useCallback(async () => {
@@ -447,7 +447,7 @@ const ContextProvider = ({ children }) => {
       }
     };
 
-    const onConnectError = () => {};
+    const onConnectError = () => { };
 
     socket.on("connect", onConnect);
     socket.on("connect_error", onConnectError);
@@ -634,6 +634,10 @@ const ContextProvider = ({ children }) => {
       setMySubscription(data);
     };
 
+    const reloadReviewedTasks = debounced(async () => {
+      await fetchReviewedTasks();
+    });
+
     const updates = [
       "task_updated",
       "task_status_updated",
@@ -649,6 +653,7 @@ const ContextProvider = ({ children }) => {
     socket.on("new_notification", onNotification);
     socket.on("user_updated", onUserUpdated);
     socket.on("task_created", onTaskCreated);
+    socket.on("reviewed_tasks_updated", reloadReviewedTasks);
 
     updates.forEach((e) => socket.on(e, onTaskUpdate));
     deletes.forEach((e) => socket.on(e, onTaskDelete));
@@ -681,6 +686,7 @@ const ContextProvider = ({ children }) => {
       reloadWorkerInvites.cancel();
       reloadManagerInvites.cancel();
       reloadAdmin.cancel();
+      reloadReviewedTasks.cancel();
 
       socket.off("new_task_assigned", onNewTask);
       socket.off("new_notification", onNotification);
@@ -699,8 +705,9 @@ const ContextProvider = ({ children }) => {
       socket.off("admin_info_updated", reloadAdmin);
       socket.off("manager_requests_updated", reloadAdmin);
       socket.off("subscription", handleSubscriptionUpdate);
+      socket.off("reviewed_tasks_updated", reloadReviewedTasks);
     };
-  }, [userId, role, playNotificationSound]);
+  }, [userId, role, playNotificationSound, fetchReviewedTasks]);
 
   return (
     <>

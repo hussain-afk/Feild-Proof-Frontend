@@ -84,3 +84,17 @@ export const getMyRejectedTasks = async () => {
         throw error;
     }
 }
+
+export const approvePayment = async (payslipId) => {
+    try {
+        const response = await api.put(`/approve-payment/${payslipId}`, {
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Approve Payment API error:", error.response?.data || error);
+        throw error;
+    }
+}

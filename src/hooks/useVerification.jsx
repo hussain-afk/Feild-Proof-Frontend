@@ -4,6 +4,7 @@ import {
   delVerification,
   ApproveVerification,
   RejectVerification,
+  approvePayment
 } from "../api/verification.api.js";
 import { toast } from "react-hot-toast";
 import { useContext } from "react";
@@ -91,12 +92,27 @@ const useVerification = () => {
     }
   };
 
+  const onApprovePayment = async (payslipId) => {
+    try {
+      setIsLoading(true);
+      const result = await approvePayment(payslipId);
+      toast.success("Payment approved successfully!");
+      return result;
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     verifyCheckIn,
     verifyCheckOut,
     deleteVerification,
     onApprove,
     onReject,
+    onApprovePayment,
   };
 };
 
