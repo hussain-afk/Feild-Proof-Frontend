@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /worker
+Disallow: /manager
+Disallow: /admin
+Disallow: /pending
+Disallow: /banned
