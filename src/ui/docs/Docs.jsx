@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 import {
   ShieldCheck,
   Users,
@@ -41,6 +42,13 @@ const SECTIONS = [
 function DocumentationPage() {
   const [openNav, setOpenNav] = useState(false);
   const [active, setActive] = useState("intro");
+
+  usePageMeta({
+    title: "FieldProof Documentation | Worker, Manager & Admin Guides",
+    description:
+      "Learn how to use FieldProof for worker check-ins, GPS site verification, photo proof, team invites, task approval and account roles.",
+    canonical: "/docs",
+  });
 
   useEffect(() => {
     const onScroll = () => {

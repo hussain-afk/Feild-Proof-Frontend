@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import LoadingState from "../ui/LoadingState.jsx";
+import usePageMeta from "../hooks/usePageMeta.jsx";
 
 /* -------------------------------------------------- */
 /* Settings                                           */
@@ -308,6 +309,14 @@ function FeaturePanel() {
 function AuthPage() {
   const { isLoading } = useContext(context);
   const { register, login } = useAuth();
+
+  usePageMeta({
+    title: "Sign in or Register | FieldProof",
+    description:
+      "Sign in to your FieldProof workspace or create a worker account. Managers can request approval from an administrator.",
+    canonical: "/auth",
+    noIndex: true,
+  });
 
   const [authMode, setAuthMode] = useState("login");
   const [form, setForm] = useState(EMPTY_FORM);

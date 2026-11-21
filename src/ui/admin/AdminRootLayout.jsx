@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from '../admin/components/Sidebar'
 import { ChevronRight } from "lucide-react";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 
 const ROLE_LABEL = "Admin";
 const ROOT_TITLE = "Dashboard";
@@ -60,6 +61,13 @@ function TopBar() {
 }
 
 function AdminRootLayout() {
+  usePageMeta({
+    title: "Admin Workspace | FieldProof",
+    description: "Private FieldProof administrator workspace.",
+    canonical: "/",
+    noIndex: true,
+  });
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#0b0f19] text-slate-100 lg:flex-row">
       {/* Skip link for keyboard users */}

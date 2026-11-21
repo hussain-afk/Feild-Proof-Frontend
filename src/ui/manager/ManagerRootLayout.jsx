@@ -2,6 +2,7 @@ import { Outlet, useLocation, NavLink } from "react-router-dom";
 import ManagerSidebar from "./components/Sidebar.jsx";
 import { BookOpen, ChevronRight } from "lucide-react";
 import NotificationDropdown from "../NotificationDropdown.jsx";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 
 const ROLE_LABEL = "Manager";
 const ROOT_PATH = "/manager";
@@ -103,6 +104,13 @@ function TopBar() {
 }
 
 function ManagerRootLayout() {
+  usePageMeta({
+    title: "Manager Workspace | FieldProof",
+    description: "Private FieldProof manager workspace.",
+    canonical: "/",
+    noIndex: true,
+  });
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#0b0f19] text-slate-100 lg:flex-row">
       <a

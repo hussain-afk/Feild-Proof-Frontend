@@ -2,6 +2,7 @@ import { Outlet, useLocation, NavLink } from "react-router-dom";
 import WorkerSidebar from "./components/Sidebar";
 import { BookOpen, ChevronRight } from "lucide-react";
 import NotificationDropdown from "../NotificationDropdown";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 
 const ROLE_LABEL = "Worker";
 const ROOT_PATH = "/worker";
@@ -103,6 +104,13 @@ function TopBar() {
 }
 
 function WorkerLayout() {
+  usePageMeta({
+    title: "Worker Workspace | FieldProof",
+    description: "Private FieldProof worker workspace.",
+    canonical: "/",
+    noIndex: true,
+  });
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-[#0b0f19] text-slate-100 lg:flex-row">
       <a

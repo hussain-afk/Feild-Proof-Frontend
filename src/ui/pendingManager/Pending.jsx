@@ -2,10 +2,18 @@ import { useContext } from "react";
 import { context } from "../../context/context.jsx";
 import useAuth from "../../hooks/useAuth.jsx";
 import { LogOut, ShieldCheck, Clock3, Info } from "lucide-react";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 
 function Pending() {
   const { user } = useContext(context);
   const { logout } = useAuth();
+
+  usePageMeta({
+    title: "Approval Pending | FieldProof",
+    description: "This FieldProof manager account is waiting for administrator approval.",
+    canonical: "/",
+    noIndex: true,
+  });
 
   const isPending = user?.role === "pending_manager";
 

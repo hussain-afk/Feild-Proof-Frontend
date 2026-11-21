@@ -1,9 +1,17 @@
 import { Ban, LogOut, ShieldAlert, Mail } from "lucide-react";
+import usePageMeta from "../../hooks/usePageMeta.jsx";
 
 const Banned = ({
   onLogout,
   supportEmail = "https://muhammadhussainmemon.vercel.app/#contact",
 }) => {
+  usePageMeta({
+    title: "Account Restricted | FieldProof",
+    description: "This FieldProof account has restricted access.",
+    canonical: "/",
+    noIndex: true,
+  });
+
   return (
     <div
       role="alert"

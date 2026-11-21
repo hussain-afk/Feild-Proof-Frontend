@@ -11,6 +11,7 @@ import {
   ArrowRight,
   RadioTower,
 } from "lucide-react";
+import usePageMeta from "../hooks/usePageMeta.jsx";
 
 const tips = [
   {
@@ -48,6 +49,13 @@ function OfflinePage({
 }) {
   const rootRef = useRef(null);
   const [failedOnce, setFailedOnce] = useState(false);
+
+  usePageMeta({
+    title: "Offline | FieldProof",
+    description: "FieldProof is unavailable while this device is offline.",
+    canonical: "/",
+    noIndex: true,
+  });
 
   useEffect(() => {
     const oldOverflow = document.body.style.overflow;

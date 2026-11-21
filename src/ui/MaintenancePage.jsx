@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import usePageMeta from "../hooks/usePageMeta.jsx";
 import { Wrench, RefreshCw, ShieldCheck, Clock } from "lucide-react";
 
 function MaintenancePage({ status, onCheck }) {
   const [checking, setChecking] = useState(false);
   const [now, setNow] = useState(null);
+
+  usePageMeta({
+    title: "Maintenance | FieldProof",
+    description: "FieldProof is temporarily unavailable while maintenance is in progress.",
+    canonical: "/",
+    noIndex: true,
+  });
 
   useEffect(() => {
     const updateNow = () => setNow(Date.now());

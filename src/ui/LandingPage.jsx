@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import feildprooflogo from "../assets/fieldproof-logo.png";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
+import usePageMeta from "../hooks/usePageMeta.jsx";
+import { SITE_URL } from "../config/site";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   ShieldCheck,
@@ -43,6 +45,35 @@ import {
  */
 
 gsap.registerPlugin(ScrollTrigger);
+
+const LANDING_JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "FieldProof",
+      url: SITE_URL,
+      logo: `${SITE_URL}/feildProofLogo.png`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "FieldProof",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "FieldProof",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, Windows",
+      description:
+        "Field workforce attendance software with GPS check-ins, photo proof, task assignment and manager approval.",
+      url: SITE_URL,
+    },
+  ],
+};
 
 const LOGIN_PATH = "/auth";
 const REGISTER_PATH = "/auth";
@@ -301,6 +332,14 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState("");
   const [pastHero, setPastHero] = useState(false); // shows the sticky "Get started" bar on phones
+
+  usePageMeta({
+    title: "FieldProof — Field Work Verification & GPS Attendance",
+    description:
+      "Verify field attendance with GPS check-ins and photo proof. Assign tasks, track workers and approve completed visits with FieldProof.",
+    canonical: "/",
+    jsonLd: LANDING_JSON_LD,
+  });
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -1531,10 +1570,7 @@ function Footer() {
 
         <FooterColumn
           title="Legal"
-          links={[
-            { label: "Privacy policy", to: "/privacy" },
-            { label: "Terms of use", to: "/terms" },
-          ]}
+          links={[{ label: "Documentation", to: "/docs" }]}
         />
       </div>
 

@@ -1,43 +1,16 @@
 import Routing from "./router/Routing";
 import { Toaster } from "react-hot-toast";
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 import { context } from "./context/context.jsx";
 import LoadingState from "./ui/LoadingState.jsx";
 import useOnlineStatus from "./hooks/useOnlineStatus.jsx";
 import OfflinePage from "./ui/OfflinePage.jsx";
-import { useLocation } from "react-router-dom";
 
 import "leaflet/dist/leaflet.css";
 
 function App() {
   const { isLoading, isRefreshing } = useContext(context);
   const isOnline = useOnlineStatus();
-  const location = useLocation();
-
-  useEffect(() => {
-    const publicPaths = ["/", "/docs"];
-    const isPublicPage = publicPaths.includes(window.location.pathname);
-    const robots = document.querySelector('meta[name="robots"]');
-
-    if (robots) {
-      robots.setAttribute(
-        "content",
-        isPublicPage ? "index, follow" : "noindex, nofollow"
-      );
-    }
-
-    const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) {
-      canonical.setAttribute(
-        "href",
-        isPublicPage
-          ? window.location.origin + (window.location.pathname === "/docs" ? "/docs" : "/")
-          : window.location.origin + "/"
-      );
-    }
-
-    return () => undefined;
-  }, [location.pathname]);
 
   const handleRetry = () => {
     if (navigator.onLine) {
